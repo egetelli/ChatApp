@@ -1,0 +1,13 @@
+# .gitignore (Ana Dizin için)
+
+# --- C# / .NET Gereksizleri ---
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+
+# --- Angular Gereksizleri ---
+node_modules/
+dist/
+.angular/
