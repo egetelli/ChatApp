@@ -57,7 +57,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection(); // HTTP isteklerini zorla HTTPS'e çevirir (Güvenlik).
 app.UseAuthentication(); // 1. ÖNCE KİMLİK KONTROLÜ: "Sen kimsin? Token'ın geçerli mi?"
 app.UseAuthorization(); // 2. SONRA YETKİ KONTROLÜ: "Senin bu sayfaya girmeye iznin var mı?"
-
+app.UseStaticFiles();
 app.MapAccountEndpoint();
 
 app.Run(); // Uygulamayı başlat ve istekleri dinlemeye başla.
