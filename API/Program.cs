@@ -1,6 +1,7 @@
 using System.Text;
 using API.Data;
 using API.Endpoints;
+using API.Hubs;
 using API.Modals;
 using API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -93,6 +94,7 @@ app.UseHttpsRedirection(); // HTTP isteklerini zorla HTTPS'e çevirir (Güvenlik
 app.UseAuthentication(); // 1. ÖNCE KİMLİK KONTROLÜ: "Sen kimsin? Token'ın geçerli mi?"
 app.UseAuthorization(); // 2. SONRA YETKİ KONTROLÜ: "Senin bu sayfaya girmeye iznin var mı?"
 app.UseStaticFiles();
+app.MapHub<ChatHub>("hubs/chat");
 app.MapAccountEndpoint();
 
 app.Run(); // Uygulamayı başlat ve istekleri dinlemeye başla.
