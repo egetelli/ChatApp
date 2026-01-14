@@ -10,6 +10,18 @@ using Microsoft.IdentityModel.Tokens;
 
 //Uygulamanın temelini (konfigürasyon, loglama vb.) hazırlar. Bir nevi inşaata başlamadan önceki iskele kurulumudur.
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddCors(
+    options =>
+    {
+        options.AddDefaultPolicy(builder =>
+        {
+            builder.WithOrigins("http://localhost:4200", "https://localhost:4200")
+            .AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+        });
+    }
+);
+
 //appsettings.json dosyasındaki "JWTSettings" bölümünü okur. Token üretirken ve çözerken kullanacağın gizli anahtarı (Secret Key) buradan alacağız.
 var JwtSetting = builder.Configuration.GetSection("JWTSettings");
 
@@ -43,11 +55,28 @@ builder.Services.AddAuthentication(opt =>
         ValidateIssuer = false, // Token'ı kimin dağıttığını kontrol etme (Geliştirme aşamasında kolaylık).
         ValidateAudience = false, // Token'ın kime verildiğini kontrol etme.
     };
+
+    option.Events = new JwtBearerEvents
+    {
+      OnMessageReceived = context =>
+      {
+          var accessToken = context.Request.Query["access_token"];
+          var path = context.HttpContext.Request.Path;
+
+          if(!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+          {
+              context.Token = accessToken;
+          }
+
+          return Task.CompletedTask;
+      }  
+    };
 });
 builder.Services.AddAuthorization();
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -56,6 +85,9 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi(); // Sadece geliştirme modundaysan API dökümantasyonunu aktif et.
 }
+
+app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod()
+                .AllowCredentials().WithOrigins("http://localhost:4200", "https://localhost:4200"));
 
 app.UseHttpsRedirection(); // HTTP isteklerini zorla HTTPS'e çevirir (Güvenlik).
 app.UseAuthentication(); // 1. ÖNCE KİMLİK KONTROLÜ: "Sen kimsin? Token'ın geçerli mi?"
