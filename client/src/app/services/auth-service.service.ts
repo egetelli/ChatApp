@@ -8,7 +8,7 @@ import { ApiResponse } from '../modals/api-response';
 })
 export class AuthServiceService {
   private baseUrl = 'http://localhost:5000/api/account';
-  httpClient = inject(HttpClient);
+  private httpClient = inject(HttpClient);
 
   register(data: FormData): Observable<ApiResponse<String>> {
     return this.httpClient
