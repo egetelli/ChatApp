@@ -2,3 +2,19 @@
 @import "tailwindcss";
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active  {
+    /* 1. Arka planı değiştirmek yerine, içe doğru devasa bir gölge atıyoruz */
+    /* BURADAKİ #HEX KODUNU senin koyu arka plan renginle değiştir */
+    -webkit-box-shadow: 0 0 0 30px #4a454d inset !important; 
+    
+    /* 2. Yazı rengini de beyaz (veya istediğin renk) yapıyoruz */
+    -webkit-text-fill-color: #e9e0e4 !important;
+    
+    /* 3. Kenar yumuşatma (Opsiyonel) */
+    transition: background-color 5000s ease-in-out 0s;
+}
