@@ -60,6 +60,6 @@ export class AuthService {
   }
 
   isLoggedIn(): boolean {
-    return this.getAccessToken !== null;
+    return !!localStorage.getItem(this.token);
   }
 }
