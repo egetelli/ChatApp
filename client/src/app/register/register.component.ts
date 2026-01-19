@@ -7,7 +7,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ApiResponse } from '../modals/api-response';
+import { ApiResponse } from '../models/api-response';
 import { Router, RouterLink } from '@angular/router';
 
 @Component({
