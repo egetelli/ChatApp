@@ -6,7 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { AuthService } from '../services/auth.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ApiResponse } from '../modals/api-response';
+import { ApiResponse } from '../models/api-response';
 import { Router, RouterLink } from '@angular/router';
 
 @Component({

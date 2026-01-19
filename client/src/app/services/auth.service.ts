@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable, tap } from 'rxjs';
-import { ApiResponse } from '../modals/api-response';
-import { User } from '../modals/user';
+import { Observable, of, tap } from 'rxjs';
+import { ApiResponse } from '../models/api-response';
+import { User } from '../models/user';
 
 @Injectable({
   providedIn: 'root',
@@ -54,10 +54,15 @@ export class AuthService {
         })
       );
   }
-  logout() {
+
+  logout(): Observable<boolean> {
+  // 1. Local verileri temizle
     localStorage.removeItem(this.token);
-    localStorage.removeItem('user');
-  }
+    localStorage.removeItem('user'); 
+
+  // 2. Geriye bir Observable fırlat (Bu subscribe edilebilir olmasını sağlar)
+  return of(true);
+}
 
   get getAccessToken(): string | null {
     return localStorage.getItem(this.token) || '';
