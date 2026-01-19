@@ -8,7 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ApiResponse } from '../modals/api-response';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-register',
@@ -18,6 +18,7 @@ import { Router } from '@angular/router';
     MatButtonModule,
     MatInputModule,
     MatIconModule,
+    RouterLink
   ],
   templateUrl: './register.component.html',
   styleUrl: './register.component.css',
