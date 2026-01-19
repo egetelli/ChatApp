@@ -54,6 +54,10 @@ export class AuthService {
         })
       );
   }
+  logout() {
+    localStorage.removeItem(this.token);
+    localStorage.removeItem('user');
+  }
 
   get getAccessToken(): string | null {
     return localStorage.getItem(this.token) || '';
