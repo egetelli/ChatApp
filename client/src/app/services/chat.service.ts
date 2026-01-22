@@ -48,9 +48,15 @@ export class ChatService {
       );
     });
 
-    this.hubConnection!.on("ReceiveMessageList", (message) => {
-      this.chatMessages.update(messages => [...message,...messages]);
+    this.hubConnection!.on('ReceiveMessageList', (message) => {
+      this.chatMessages.update((messages) => [...message, ...messages]);
       this.isLoading.update(() => false);
+    });
+
+    this.hubConnection!.on('ReceiveNewMessage', (message: Message) => {
+      document.title = '(1) New Message';
+
+      this.chatMessages.update((messages) => [...messages, message]);
     })
   }
 
@@ -68,6 +74,32 @@ export class ChatService {
         console.error('Bağlantı durdurulurken hata:', error);
       }
     }
+  }
+
+  sendMessage(message: string) {
+    this.chatMessages.update((messages) => [
+      ...messages,
+      {
+        content: message,
+        senderId: this.authService.currentLoggedInUser!.id,
+        receiverId: this.currentOpenedChat()?.id!,
+        createdDate: new Date().toString(),
+        isRead: false,
+        id: 0,
+      },
+    ]);
+
+    this.hubConnection
+      ?.invoke('SendMessage', {
+        receiverId: this.currentOpenedChat()?.id,
+        content: message,
+      })
+      .then((id) => {
+        console.log('message send to', id);
+      })
+      .catch((error) => {
+        console.log(error);
+      })
   }
 
   status(userName: string): string {
@@ -90,12 +122,13 @@ export class ChatService {
     return onlineUser?.isOnline ? 'online' : this.currentOpenedChat()!.userName;
   }
 
-  loadMessages(pageNumber: number){
-    this.hubConnection?.invoke("LoadMessages", this.currentOpenedChat()?.id, pageNumber)
-    .then()
-    .catch()
-    .finally(() => {
-      this.isLoading.update(() => false);
-    })
+  loadMessages(pageNumber: number) {
+    this.hubConnection
+      ?.invoke('LoadMessages', this.currentOpenedChat()?.id, pageNumber)
+      .then()
+      .catch()
+      .finally(() => {
+        this.isLoading.update(() => false);
+      });
   }
 }
