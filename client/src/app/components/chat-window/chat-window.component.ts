@@ -16,6 +16,8 @@ export class ChatWindowComponent {
   message: string = '';
 
   sendMessage(){
-    
+    if(!this.message) return;
+    this.chatService.sendMessage(this.message);
+    this.message = '';
   }
 }

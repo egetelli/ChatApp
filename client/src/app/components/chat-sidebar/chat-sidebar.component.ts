@@ -60,8 +60,22 @@ export class ChatSidebarComponent implements OnInit {
     this.chatService.startConnection(this.authService.getAccessToken!);
   }
 
-  openedChatWindow(user: User){
+  openedChatWindow(user: User) {
+    // 1. Eğer zaten bu kullanıcıyla konuşuyorsak işlem yapma (Opsiyonel)
+    if (this.chatService.currentOpenedChat()?.id === user.id) return;
+
+    // 2. Seçili kullanıcıyı güncelle
     this.chatService.currentOpenedChat.set(user);
+
+    // 3. --- KRİTİK NOKTA ---
+    // Önceki kullanıcının mesajlarını temizle!
+    // Eğer bunu yapmazsan, gelen yeni mesajlar eskilerin üstüne eklenir.
+    this.chatService.chatMessages.set([]);
+
+    // 4. Yükleniyor animasyonunu başlat
+    this.chatService.isLoading.set(true);
+
+    // 5. Şimdi yeni kullanıcının mesajlarını iste (Sayfa 1)
     this.chatService.loadMessages(1);
   }
 }
