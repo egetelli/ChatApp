@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { AfterViewChecked, Component, ElementRef, inject, ViewChild } from '@angular/core';
 import { ChatService } from '../../services/chat.service';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { AuthService } from '../../services/auth.service';
@@ -65,7 +65,22 @@ import { MatIcon } from '@angular/material/icon';
     `,
   ],
 })
-export class ChatBoxComponent {
+export class ChatBoxComponent implements AfterViewChecked {
+  @ViewChild('scrollMe') private myScrollContainer!: ElementRef;
   chatService = inject(ChatService);
   authService = inject(AuthService);
+
+  ngAfterViewChecked() {
+    this.scrollToBottom();
+  }
+
+  scrollToBottom(): void {
+    try {
+      // Chat kutusunun scrollunu en aşağı itiyoruz
+      this.myScrollContainer.nativeElement.scrollTop =
+        this.myScrollContainer.nativeElement.scrollHeight;
+    } catch (err) {
+      // İlk yüklemede hata vermemesi için boş bırakılabilir
+    }
+  }
 }
