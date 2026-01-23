@@ -31,8 +31,7 @@
     </div>
     <div class="py-1 overflow-y-auto scroll-smooth">
         @for (user of chatService.onlineUsers(); track user) {
-        <div 
-            (click)="openedChatWindow(user)"
+        <div (click)="openedChatWindow(user)"
             class="flex items-center border-b bg-white hover:bg-slate-200 cursor-pointer hover:rounded-md border-gray-100 px-3 gap-2 py-2">
             <img [src]="user!.profileImage" class="h-10 w-10 rounded-full" alt="">
             <div class="">
@@ -42,6 +41,9 @@
                 <p class="text-xs text-slate-400">
                     {{ user.unreadCount ? user.unreadCount + 'new messages': '' }}
                 </p>
+                @if(user.isTyping){
+                <app-typing-indicator />
+                }
             </div>
             @if(user.isOnline){
             <div class="ml-auto font-medium text-xs">

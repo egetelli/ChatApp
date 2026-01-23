@@ -134,7 +134,9 @@ public class ChatHub(UserManager<AppUser> userManager, AppDbContext context) : H
         }
         // 1. Kime yazıyorum? Onun kullanıcı adını bul.
         // 2. O kullanıcı şu an online mı? (onlineUsers sözlüğüne bak).
-        var connectionId = onlineUsers.Values.FirstOrDefault(x => x.UserName == recipientUserName)?.ConnectionId;
+        var connectionId = onlineUsers.Values
+        .FirstOrDefault(x => string.Equals(x.UserName, recipientUserName, StringComparison.OrdinalIgnoreCase))
+        ?.ConnectionId;
 
         // 3. Eğer online ise, onun bağlantısına "NotifyTypingToUser" sinyali gönder.
         // "Bak şu an sana biri (senderUserName) bir şeyler yazıyor" de.

@@ -11,6 +11,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ApiResponse } from '../../models/api-response';
 import { Observable } from 'rxjs';
 import { User } from '../../models/user';
+import { TypingIndicatorComponent } from "../typing-indicator/typing-indicator.component";
 
 @Component({
   selector: 'app-chat-sidebar',
@@ -20,7 +21,8 @@ import { User } from '../../models/user';
     MatIconModule,
     MatMenuModule,
     TitleCasePipe,
-  ],
+    TypingIndicatorComponent
+],
   templateUrl: './chat-sidebar.component.html',
   styles: ``,
 })
