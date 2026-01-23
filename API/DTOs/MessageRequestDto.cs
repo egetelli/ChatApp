@@ -1,4 +1,5 @@
 using System;
+using API.Modals;
 
 namespace API.DTOs;
 
@@ -10,4 +11,12 @@ public class MessageRequestDto
     public string? Content { get; set; }
     public bool IsRead { get; set; }
     public DateTime CreatedDate { get; set; }
+
+    public MessageType MessageType { get; set; } = MessageType.Text; 
+    
+    // Dosyanın sunucudaki yolu (Örn: /uploads/resim.jpg)
+    public string? AttachmentUrl { get; set; } 
+    
+    // Dosyanın orijinal adı (Örn: odevi.pdf)
+    public string? AttachmentName { get; set; }
 }

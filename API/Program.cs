@@ -96,5 +96,6 @@ app.UseAuthorization(); // 2. SONRA YETKİ KONTROLÜ: "Senin bu sayfaya girmeye 
 app.UseStaticFiles();
 app.MapHub<ChatHub>("hubs/chat");
 app.MapAccountEndpoint();
+app.MapChatEndpoint();
 
 app.Run(); // Uygulamayı başlat ve istekleri dinlemeye başla.
