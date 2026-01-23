@@ -1,9 +1,17 @@
-import { AfterViewChecked, Component, ElementRef, inject, ViewChild } from '@angular/core';
+import {
+  AfterViewChecked,
+  Component,
+  ElementRef,
+  inject,
+  ViewChild,
+} from '@angular/core';
 import { ChatService } from '../../services/chat.service';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { AuthService } from '../../services/auth.service';
 import { DatePipe } from '@angular/common';
 import { MatIcon } from '@angular/material/icon';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http'; // 1. HttpClient Import Edildi
 
 @Component({
   selector: 'app-chat-box',
@@ -69,6 +77,8 @@ export class ChatBoxComponent implements AfterViewChecked {
   @ViewChild('scrollMe') private myScrollContainer!: ElementRef;
   chatService = inject(ChatService);
   authService = inject(AuthService);
+  snackBar = inject(MatSnackBar);
+  http = inject(HttpClient); // 2. HttpClient Inject Edildi
 
   ngAfterViewChecked() {
     this.scrollToBottom();
@@ -82,5 +92,59 @@ export class ChatBoxComponent implements AfterViewChecked {
     } catch (err) {
       // İlk yüklemede hata vermemesi için boş bırakılabilir
     }
+  }
+
+  downloadFile(attachmentUrl?: string) {
+    if (!attachmentUrl) {
+      this.snackBar.open('Dosya bulunamadı ❌', 'Kapat', { duration: 3000 });
+      return;
+    }
+
+    const fileName = attachmentUrl.split('/').pop();
+    if (!fileName) {
+      this.snackBar.open('Dosya adı çözümlenemedi ❌', 'Kapat', {
+        duration: 3000,
+      });
+      return;
+    }
+
+    const url = `http://localhost:5000/api/chat/download/${fileName}`;
+
+    // 1. Önce HEAD isteği ile kontrol et (Angular HttpClient ile)
+    this.http.head(url, { observe: 'response' }).subscribe({
+      next: (res) => {
+        // Kontrol başarılıysa (200 OK), indirmeyi başlat
+        this.triggerDownload(url, fileName);
+      },
+      error: (error: HttpErrorResponse) => {
+        // Hata Yönetimi
+        let errorMessage = 'İndirme sırasında bir hata oluştu';
+
+        if (error.status === 404) {
+          errorMessage = 'Dosya sunucuda bulunamadı (404) ❌';
+        } else if (error.status === 413) {
+          errorMessage = 'Dosya boyutu çok büyük! (50MB Sınırı) ⚠️';
+        } else if (error.status === 0) {
+          // CORS veya Network hatası (Backend 413 döndüğünde CORS header yoksa buraya düşer)
+          errorMessage = 'Sunucu bağlantı hatası veya dosya çok büyük ⚠️';
+        }
+
+        this.snackBar.open(errorMessage, 'Kapat', {
+          duration: 4000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+        });
+      },
+    });
+  }
+
+  // Yardımcı Metod: Gerçek indirmeyi tetikler
+  private triggerDownload(url: string, fileName: string) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 }

@@ -1,66 +1,115 @@
 <div #scrollMe class="flex chat-box py-2 border-20 border-transparent flex-col">
     <div class="h-100">
+        <!-- Load More Butonu -->
         @if(chatService.chatMessages().length > 5){
-        <div class="text-center py-1 sticky top-0 w-full">
+        <div class="text-center py-1 sticky top-0 w-full z-10">
             <button
-                class="text-gray-500 text-xs shadow px-5 py-2 rounded-full bg-gray-200 hover:text-gray-700 focus:outline-none">
+                class="text-gray-500 text-xs shadow px-5 py-2 rounded-full bg-gray-200 hover:text-gray-700 focus:outline-none transition-colors">
                 @if(chatService.isLoading()){
                 <div class="flex items-center gap-2">
-                    <mat-spinner diameter="20" strokeWidth="3">
-                    </mat-spinner> Loading
+                    <mat-spinner diameter="20" strokeWidth="3"></mat-spinner> Loading
                 </div>
-                }@else {
-                Load More
-                }
+                }@else { Load More }
             </button>
         </div>
         }
 
         @for (item of chatService.chatMessages(); track item.id) {
-        @if(item.senderId !== authService.currentLoggedInUser?.id){
-        <div class="flex mb-3 flex-row items-center justify-normal">
+
+        <!-- Mesaj Hizalama -->
+        <div class="flex mb-3 flex-row items-center"
+            [class.justify-normal]="item.senderId !== authService.currentLoggedInUser?.id"
+            [class.justify-end]="item.senderId === authService.currentLoggedInUser?.id">
+
+            <!-- Karşı Tarafın Profil Resmi -->
+            @if(item.senderId !== authService.currentLoggedInUser?.id){
             <div
-                class="flex items-center justify-center h-10 w-10 rounded-full bg-linear-to-r from-green-400 to-blue-500 shrink-0">
-                <img [src]="chatService.currentOpenedChat()?.profileImage"
-                    [alt]="chatService.currentOpenedChat()?.fullName" class="rounded-full h-8 w-8" />
+                class="flex items-center justify-center h-10 w-10 rounded-full bg-linear-to-r from-green-400 to-blue-500 shrink-0 mr-2">
+                <img [src]="chatService.currentOpenedChat()?.profileImage" class="rounded-full h-8 w-8 object-cover" />
             </div>
-            <div class="chat-message bg-white p-4 rounded-lg ml-2 shadow-sm">
-                <span class="text-sm text-gray-800 block">
+            }
+
+            <!-- Mesaj Kutusu -->
+            <div class="chat-message p-3 rounded-lg shadow-sm max-w-[70%] relative group"
+                [class.bg-white]="item.senderId !== authService.currentLoggedInUser?.id"
+                [class.bg-blue-600]="item.senderId === authService.currentLoggedInUser?.id"
+                [class.text-white]="item.senderId === authService.currentLoggedInUser?.id">
+
+                <!-- =========================== -->
+                <!-- 1. RESİM GÖRÜNÜMÜ          -->
+                <!-- =========================== -->
+                @if(item.messageType === 'Image'){
+                <div class="mb-2 relative">
+                    <img [src]="'http://localhost:5000' + item.attachmentUrl"
+                        class="rounded-lg max-h-60 object-cover w-full border border-black/10" alt="Görsel">
+
+                    <!-- Resim İndirme Butonu -->
+                    <button (click)="downloadFile(item.attachmentUrl)"
+                        class="absolute bottom-2 right-2 z-10 bg-black/60 text-white p-2 rounded-full hover:bg-black/80 transition-all flex items-center justify-center shadow-md cursor-pointer"
+                        title="İndir">
+                        <mat-icon style="font-size: 20px;">download</mat-icon>
+                    </button>
+                </div>
+                }
+
+                <!-- =========================== -->
+                <!-- 2. DOSYA GÖRÜNÜMÜ          -->
+                <!-- =========================== -->
+                @else if(item.messageType === 'File'){
+                <div class="flex items-center gap-3 p-3 rounded mb-2 border transition-colors relative"
+                    [class.bg-gray-100]="item.senderId !== authService.currentLoggedInUser?.id"
+                    [class.bg-blue-500]="item.senderId === authService.currentLoggedInUser?.id"
+                    [class.border-gray-200]="item.senderId !== authService.currentLoggedInUser?.id"
+                    [class.border-blue-400]="item.senderId === authService.currentLoggedInUser?.id">
+
+                    <div class="bg-white/20 p-2 rounded-full">
+                        <mat-icon>description</mat-icon>
+                    </div>
+
+                    <div class="flex flex-col overflow-hidden max-w-37.5">
+                        <span class="font-medium truncate text-sm" [title]="item.attachmentName">
+                            {{ item.attachmentName || 'Dosya' }}
+                        </span>
+                        <span class="text-[10px] opacity-80">Ek Dosya</span>
+                    </div>
+
+                    <!-- Dosya İndirme Butonu -->
+                    <button (click)="downloadFile(item.attachmentUrl)"
+                        class="ml-auto p-2 rounded-full flex items-center justify-center transition-colors shadow-sm cursor-pointer z-10"
+                        [class]="item.senderId !== authService.currentLoggedInUser?.id 
+                            ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' 
+                            : 'bg-white/20 text-white hover:bg-white/30'" title="İndir">
+                        <mat-icon style="font-size: 20px;">download</mat-icon>
+                    </button>
+                </div>
+                }
+
+                <!-- Metin İçeriği -->
+                @if(item.content){
+                <span class="text-sm block wrap-break-word whitespace-pre-wrap leading-relaxed">
                     {{ item.content }}
                 </span>
-                <span class="text-right text-gray-400 text-[10px] block mt-1">
-                    {{ item.createdDate | date:'short' }}
-                </span>
+                }
+
+                <!-- Saat -->
+                <div class="flex items-center justify-end gap-1 mt-1 opacity-70">
+                    <span class="text-[10px]">{{ item.createdDate | date:'shortTime' }}</span>
+                    <!-- Okundu Bilgisi (Sadece bizim mesajlarımızda) -->
+                    @if(item.senderId === authService.currentLoggedInUser?.id){
+                    <mat-icon style="font-size: 14px; width: 14px; height: 14px;" [class.text-blue-200]="!item.isRead"
+                        [class.text-green-300]="item.isRead">
+                        {{ item.isRead ? 'done_all' : 'check' }}
+                    </mat-icon>
+                    }
+                </div>
             </div>
-        </div>
-        }@else {
-        <div class="flex flex-row items-center justify-end mb-3">
-            <div class="chat-message bg-blue-600 p-4 rounded-lg mr-2 shadow-sm text-white">
-                <span class="text-sm block">
-                    {{ item.content }}
-                </span>
-                <span class="text-right text-gray-400 text-[10px] block mt-1">
-                    {{ item.createdDate | date:'short'}}
-                </span>
-            </div>
+
+            <!-- Bizim Profil Resmimiz -->
+            @if(item.senderId === authService.currentLoggedInUser?.id){
             <div
-                class="flex items-center justify-center h-10 w-10 rounded-full bg-linear-to-r from-blue-500 to-purple-500 shrink-0">
-                <img [src]="authService.currentLoggedInUser?.profileImage"
-                    [alt]="authService.currentLoggedInUser?.fullName" class="rounded-full h-8 w-8" />
+                class="flex items-center justify-center h-10 w-10 rounded-full bg-linear-to-r from-blue-500 to-purple-500 shrink-0 ml-2">
+                <img [src]="authService.currentLoggedInUser?.profileImage" class="rounded-full h-8 w-8 object-cover" />
             </div>
-        </div>
-        }
-        }@empty {
-        <div class="flex flex-col items-center justify-center h-full">
-            @if(chatService.isLoading()){
-                <mat-spinner diameter="40" strokeWidth="3"></mat-spinner>
-            }@else{
-                <mat-icon class="text-gray-400 chat-icon">
-                    chat
-                </mat-icon>
-                <h6 class="text-center text-gray-500">
-                    No message yet
-                </h6>
             }
         </div>
         }

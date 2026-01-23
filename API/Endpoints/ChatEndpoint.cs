@@ -8,6 +8,54 @@ public static class ChatEndpoint
     {
         //1. Api Grup oluşturma
         var group = app.MapGroup("/api/chat").WithTags("chat");
+        group.MapGet("/download/{fileName}", async (
+            HttpContext context,
+            IWebHostEnvironment env,
+            string fileName
+        ) =>
+        {
+            const long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
+            // Güvenlik
+            fileName = Path.GetFileName(fileName);
+
+            var webRoot = env.WebRootPath
+                        ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+
+            var uploadsFolder = Path.Combine(webRoot, "uploads");
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            if (!System.IO.File.Exists(filePath))
+                return Results.NotFound("Dosya bulunamadı");
+
+            var fileInfo = new FileInfo(filePath);
+
+            // 🚨 BOYUT KONTROLÜ
+            if (fileInfo.Length > MAX_FILE_SIZE)
+                return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+
+            var originalFileName = fileName.Contains('_')
+                ? fileName[(fileName.IndexOf('_') + 1)..]
+                : fileName;
+
+            var stream = new FileStream(
+                filePath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                bufferSize: 64 * 1024,
+                useAsync: true
+            );
+
+            return Results.File(
+                stream,
+                contentType: "application/octet-stream",
+                fileDownloadName: originalFileName,
+                enableRangeProcessing: true // 🔥 kritik satır
+            );
+        });
+
+
 
         //2. Upload Endpoint'i
         // IWebHostEnvironment: wwwroot yolunu bulmak için otomatik inject edilir.

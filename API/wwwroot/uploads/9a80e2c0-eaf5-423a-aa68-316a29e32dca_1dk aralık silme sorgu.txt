@@ -1,0 +1,97 @@
+CREATE TABLE IF NOT EXISTS dbo."SignalsForCleaning" (
+  "CleaningSignalID"   INT PRIMARY KEY
+                 REFERENCES dbo."Signals" ("SignalID") ON DELETE CASCADE,
+  "SignalName" TEXT NOT NULL,
+  "Reason"     TEXT,
+  "AddedAt"    TIMESTAMPTZ DEFAULT now()
+);
+
+INSERT INTO dbo."SignalsForCleaning" ("CleaningSignalID", "SignalName", "Reason")
+SELECT s."SignalID", s."Name", 'Initial excluded for cleaning'
+FROM dbo."Signals" AS s
+WHERE 
+     s."SignalID" BETWEEN 5965 AND 5983
+  OR s."SignalID" BETWEEN 5908 AND 5939
+  OR s."SignalID" BETWEEN 5899 AND 5906
+  OR s."SignalID" BETWEEN 13 AND 29
+  OR s."Name" IN ('WPExp', 'WPImp', 'WQExp', 'WQImp')
+ON CONFLICT ("CleaningSignalID") DO NOTHING;
+
+CREATE INDEX IF NOT EXISTS idx_signalsforcleaning_signalid
+ON dbo."SignalsForCleaning"("CleaningSignalID");
+
+
+CREATE INDEX IF NOT EXISTS idx_values_usersignal_time
+ON dbo."Values"("UserSignalID", "Time");
+
+
+//sorgu için en performans arttıran bu index
+CREATE INDEX IF NOT EXISTS idx_values_signal_time
+ON dbo."Values"("UserSignalID", "Time");
+
+DO $$
+DECLARE
+    batch_size INT := 500000;  -- 500k
+    rows_deleted INT := 1;
+BEGIN
+    WHILE rows_deleted > 0 LOOP
+        WITH RankedData AS (
+            SELECT v."ID",
+                   ROW_NUMBER() OVER (
+                       PARTITION BY v."UserSignalID", date_trunc('minute', v."Time")
+                       ORDER BY ABS(EXTRACT(EPOCH FROM (v."Time" - date_trunc('minute', v."Time"))))
+                   ) AS RowRank
+            FROM dbo."Values" v
+            JOIN dbo."UserSignals" us ON v."UserSignalID" = us."UserSignalID"
+            JOIN dbo."Signals" s ON us."SignalID" = s."SignalID"
+            WHERE v."Time" >= '2025-03-20 02:00:25'
+              AND v."Time" <  '2025-09-02 08:08:50'
+              AND s."DataTypeID" NOT IN (3,4,6,7,8)
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM dbo."SignalsForCleaning" sc
+                  WHERE sc."CleaningSignalID" = s."SignalID"
+              )
+        )
+        DELETE FROM dbo."Values"
+        WHERE "ID" IN (
+            SELECT "ID" FROM RankedData WHERE RowRank > 1 LIMIT batch_size
+        );
+
+        GET DIAGNOSTICS rows_deleted = ROW_COUNT;
+        RAISE NOTICE 'Batch silindi: %', rows_deleted;
+    END LOOP;
+END $$;
+
+
+
+
+SIGNALS E EKLENEN CLEANINGSIGNALSE EKLEYEN TRIGGER
+
+
+-- 1️⃣ Fonksiyon oluştur
+CREATE OR REPLACE FUNCTION add_to_signals_for_cleaning()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO dbo."SignalsForCleaning" (
+        "CleaningSignalID",
+        "SignalName",
+        "Reason",
+        "AddedAt"
+    )
+    VALUES (
+        NEW."SignalID",
+        NEW."Name",
+        'Auto added by trigger',
+        now()
+    )
+    ON CONFLICT ("CleaningSignalID") DO NOTHING;  -- Zaten varsa ekleme
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 2️⃣ Trigger oluştur
+CREATE TRIGGER trg_add_signal_to_cleaning
+AFTER INSERT ON dbo."Signals"
+FOR EACH ROW
+EXECUTE FUNCTION add_to_signals_for_cleaning();
