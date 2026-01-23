@@ -38,6 +38,17 @@ export class ChatService {
         console.log('Connection or login error', error);
       });
 
+    this.hubConnection!.on('Notify', (user: User) => {
+      Notification.requestPermission().then((result) => {
+        if (result == 'granted') {
+          new Notification('Active now 🌐', {
+            body: user.fullName + ' is online now',
+            icon: user.profileImage,
+          });
+        }
+      });
+    });
+
     this.hubConnection!.on('OnlineUsers', (user: User[]) => {
       console.log(user);
       this.onlineUsers.update(() =>
@@ -57,7 +68,7 @@ export class ChatService {
       document.title = '(1) New Message';
 
       this.chatMessages.update((messages) => [...messages, message]);
-    })
+    });
   }
 
   async stopConnection() {
@@ -99,7 +110,7 @@ export class ChatService {
       })
       .catch((error) => {
         console.log(error);
-      })
+      });
   }
 
   status(userName: string): string {
