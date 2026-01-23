@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using API.Data;
 using API.Endpoints;
 using API.Hubs;
@@ -77,7 +78,12 @@ builder.Services.AddAuthorization();
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-builder.Services.AddSignalR();
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        // Enum'ları sayı (1,2) yerine yazı ("Text", "Image") olarak gönder
+        options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 var app = builder.Build();
 
@@ -93,7 +99,15 @@ app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod()
 app.UseHttpsRedirection(); // HTTP isteklerini zorla HTTPS'e çevirir (Güvenlik).
 app.UseAuthentication(); // 1. ÖNCE KİMLİK KONTROLÜ: "Sen kimsin? Token'ın geçerli mi?"
 app.UseAuthorization(); // 2. SONRA YETKİ KONTROLÜ: "Senin bu sayfaya girmeye iznin var mı?"
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        // Frontend'in (Angular) bu dosyaları okumasına ve indirmesine izin ver
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "http://localhost:4200");
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    }
+});
 app.MapHub<ChatHub>("hubs/chat");
 app.MapAccountEndpoint();
 app.MapChatEndpoint();
