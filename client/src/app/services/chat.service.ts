@@ -7,13 +7,18 @@ import {
   HubConnectionState,
 } from '@microsoft/signalr';
 import { Message } from '../models/message';
+import { HttpClient } from '@angular/common/http';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ChatService {
   private authService = inject(AuthService);
+  private http = inject(HttpClient);
+
+  private apiUrl = 'http://localhost:5000/api/chat';
   private hubUrl = 'http://localhost:5000/hubs/chat';
+
   onlineUsers = signal<User[]>([]);
   currentOpenedChat = signal<User | null>(null);
   chatMessages = signal<Message[]>([]);
@@ -108,24 +113,45 @@ export class ChatService {
     }
   }
 
-  sendMessage(message: string) {
+  uploadFile(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.http.post<{ url: string; originalName: string }>(
+      `${this.apiUrl}/upload`,
+      formData,
+    );
+  }
+
+  sendMessage(
+    content: string,
+    type: 'Text' | 'Image' | 'File' = 'Text',
+    fileUrl?: string,
+    fileName?: string,
+  ) {
+    //Backend'e gidecek veri yapısı
+    const messagePayload = {
+      receiverId: this.currentOpenedChat()?.id,
+      content: content,
+      messageType: type,
+      attachmentUrl: fileUrl,
+      attachmentName: fileName,
+    };
+
     this.chatMessages.update((messages) => [
       ...messages,
       {
-        content: message,
+        ...messagePayload,
         senderId: this.authService.currentLoggedInUser!.id,
         receiverId: this.currentOpenedChat()?.id!,
         createdDate: new Date().toString(),
         isRead: false,
         id: 0,
-      },
+      } as any,
     ]);
-
+    
     this.hubConnection
-      ?.invoke('SendMessage', {
-        receiverId: this.currentOpenedChat()?.id,
-        content: message,
-      })
+      ?.invoke('SendMessage', messagePayload)
       .then((id) => {
         console.log('message send to', id);
       })

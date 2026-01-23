@@ -5,4 +5,9 @@ export interface Message {
   content: string | null;
   createdDate: string;
   isRead: boolean;
+
+  // --- YENİ EKLENEN ALANLAR ---
+  messageType: 'Text' | 'Image' | 'File';
+  attachmentUrl?: string;
+  attachmentName?: string;
 }
