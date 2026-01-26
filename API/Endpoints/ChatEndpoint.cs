@@ -1,13 +1,20 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using System;
-
-namespace API.Endpoints;
+using System.IO;
+using System.Threading.Tasks;
+using System.Security.Cryptography; // Hashing için gerekli
 
 public static class ChatEndpoint
 {
     public static RouteGroupBuilder MapChatEndpoint(this WebApplication app)
     {
-        //1. Api Grup oluşturma
-        var group = app.MapGroup("/api/chat").WithTags("chat");
+        var group = app.MapGroup("/api/chat").WithTags("Chat");
+
+        // -----------------------------------------------------------------------
+        // 1. DOWNLOAD ENDPOINT (Değişiklik yok, aynı kalıyor)
+        // -----------------------------------------------------------------------
         group.MapGet("/download/{fileName}", async (
             HttpContext context,
             IWebHostEnvironment env,
@@ -16,12 +23,8 @@ public static class ChatEndpoint
         {
             const long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
-            // Güvenlik
             fileName = Path.GetFileName(fileName);
-
-            var webRoot = env.WebRootPath
-                        ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-
+            var webRoot = env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
             var uploadsFolder = Path.Combine(webRoot, "uploads");
             var filePath = Path.Combine(uploadsFolder, fileName);
 
@@ -30,79 +33,87 @@ public static class ChatEndpoint
 
             var fileInfo = new FileInfo(filePath);
 
-            // 🚨 BOYUT KONTROLÜ
             if (fileInfo.Length > MAX_FILE_SIZE)
                 return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
 
-            var originalFileName = fileName.Contains('_')
-                ? fileName[(fileName.IndexOf('_') + 1)..]
-                : fileName;
+            // İndirirken orijinal ismini bulmaya çalışamayız çünkü hashledik.
+            // Frontend zaten "attachmentName"i biliyor ve indirme isteğini o isimle yapıyor.
+            // Burası sadece binary akışı sağlar.
 
-            var stream = new FileStream(
-                filePath,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.Read,
-                bufferSize: 64 * 1024,
-                useAsync: true
-            );
+            var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, true);
 
             return Results.File(
                 stream,
                 contentType: "application/octet-stream",
-                fileDownloadName: originalFileName,
-                enableRangeProcessing: true // 🔥 kritik satır
+                fileDownloadName: fileName, // Frontend'deki 'download' attribute'u asıl ismi belirler
+                enableRangeProcessing: true
             );
         });
 
-
-
-        //2. Upload Endpoint'i
-        // IWebHostEnvironment: wwwroot yolunu bulmak için otomatik inject edilir.
-        // IFormFile: Yüklenen dosyayı temsil eder.
+        // -----------------------------------------------------------------------
+        // 2. UPLOAD ENDPOINT (HASHING İLE GÜNCELLENDİ)
+        // -----------------------------------------------------------------------
         group.MapPost("/upload", async (IWebHostEnvironment environment, IFormFile file) =>
         {
-            // A. Dosya Kontrolü: Dosya seçilmiş mi?
             if (file is null || file.Length == 0)
             {
-                // Projenizdeki Response yapısına göre hata dönüşü
-                // Örnek: return Results.BadRequest(Response<string>.Failure("Lütfen bir dosya seçiniz."));
                 return Results.BadRequest(new { message = "Lütfen bir dosya seçiniz." });
             }
 
-            // B. Klasör Yolu: wwwroot/uploads
-            // IWebHostEnvironment servisi sayesinde kök dizini buluyoruz.
             var uploadsFolder = Path.Combine(environment.WebRootPath, "uploads");
+            if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
-            // Eğer klasör yoksa oluşturuyoruz
-            if (!Directory.Exists(uploadsFolder))
+            // --- DEĞİŞİKLİK BAŞLANGICI ---
+
+            // 1. Dosyanın uzantısını al (.jpg, .pdf vs.)
+            var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+            // 2. Dosyanın içeriğinin Hash'ini hesapla (SHA-256)
+            string fileHash;
+            using (var sha256 = SHA256.Create())
             {
-                Directory.CreateDirectory(uploadsFolder);
+                // Dosya akışını açıp hashliyoruz
+                using (var stream = file.OpenReadStream())
+                {
+                    var hashBytes = await sha256.ComputeHashAsync(stream);
+                    // Byte dizisini string'e çevir (örn: "A1B2C3...")
+                    fileHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                }
             }
 
-            // C. Benzersiz dosya ismi oluşturma
-            // Aynı isimli dosyalar çakışmasın diye başına GUID ekliyoruz.
-            string uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
-
-            // Dosyanın kaydedileceği tam fiziksel yol
+            // 3. Yeni dosya adı: Hash + Uzantı
+            // Örn: "8a45d...f9a.png"
+            string uniqueFileName = fileHash + fileExtension;
             string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+            string fileUrl = $"/uploads/{uniqueFileName}";
 
-            // D. Dosyayı fiziksel olarak kaydetme
+            // 4. BU DOSYA DAHA ÖNCE YÜKLENMİŞ Mİ?
+            if (System.IO.File.Exists(filePath))
+            {
+                // Zaten varsa tekrar kaydetme! Var olanın URL'ini dön.
+                // Bu sayede diskten tasarruf ederiz.
+                return Results.Ok(new
+                {
+                    url = fileUrl,
+                    originalName = file.FileName,
+                    message = "Dosya zaten sunucuda mevcut, tekrar yüklenmedi." // Bilgi amaçlı
+                });
+            }
+
+            // 5. Yoksa fiziksel olarak kaydet
             using (var fileStream = new FileStream(filePath, FileMode.Create))
             {
                 await file.CopyToAsync(fileStream);
             }
 
-            // E. Frontend'e dönecek url
-            // Tarayıcının erişebileceği yol: /uploads/benzersiz_isim.jpg
-            var fileUrl = $"/uploads/{uniqueFileName}";
+            // --- DEĞİŞİKLİK BİTİŞİ ---
 
-            //Başarılı sonuç dönüyoruz
             return Results.Ok(new
             {
                 url = fileUrl,
-                originalName = file.FileName,
+                originalName = file.FileName
             });
+
         }).DisableAntiforgery();
 
         return group;

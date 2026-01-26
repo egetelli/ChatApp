@@ -1,0 +1,6 @@
+{
+  "loginDto": {
+    "userNameOrEmail": "superadmin",
+    "password": "Admin123."
+  }
+}
