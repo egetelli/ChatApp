@@ -11,6 +11,7 @@ public class MessageRequestDto
     public string? Content { get; set; }
     public bool IsRead { get; set; }
     public DateTime CreatedDate { get; set; }
+    public int? GroupId { get; set; }
 
     public MessageType MessageType { get; set; } = MessageType.Text; 
     
