@@ -48,30 +48,54 @@ public class ChatHub(UserManager<AppUser> userManager, AppDbContext context) : H
             await Clients.AllExcept(connectionId).SendAsync("Notify",
             currentUser);
         }
+
+        var userGroups = await context.GroupMembers
+            .Where(gm => gm.UserId == currentUser!.Id)
+            .Select(gm => gm.GroupId)
+            .ToListAsync();
+        foreach (var groupId in userGroups)
+        {
+            await Groups.AddToGroupAsync(connectionId, "Group_" + groupId);
+        }
+
         // 7. Eğer kullanıcı direkt bir sohbet penceresiyle geldiyse, eski mesajları yükle.
         if (!string.IsNullOrEmpty(receiverId))
         {
+            // DÜZELTME: İkinci parametre (groupId) varsayılan null olduğu için hata vermez.
             await LoadMessages(receiverId);
         }
         // 8. Bağlanan kişiye "İşte güncel online kullanıcı listesi" de ve listeyi gönder.
         await Clients.All.SendAsync("OnlineUsers", await GetAllUsers());
     }
 
-    public async Task LoadMessages(string recipientId, int pageNumber = 1)
+    public async Task LoadMessages(string? recipientId, int? groupId = null, int pageNumber = 1)
     {
         int pageSize = 10;
         var userName = Context.User!.Identity!.Name!;
         var currentUser = await userManager.FindByNameAsync(userName);
 
-        if (currentUser is null)
+        if (currentUser is null) return;
+
+        IQueryable<Message> query = context.Messages;
+
+        // Filtreleme Mantığı
+        if (groupId.HasValue)
         {
+            query = query.Where(x => x.GroupId == groupId.Value);
+        }
+        else if (!string.IsNullOrEmpty(recipientId))
+        {
+            query = query.Where(x => x.ReceiverId == currentUser.Id && x.SenderId == recipientId
+                                 || x.SenderId == currentUser.Id && x.ReceiverId == recipientId);
+        }
+        else
+        {
+            // İkisi de yoksa mesaj döndürme
             return;
         }
 
-        // 1. Veritabanından mesajları çek.
-        List<MessageResponseDto> messages = await context.Messages
-            .Where(x => x.ReceiverId == currentUser!.Id && x.SenderId == recipientId
-                     || x.SenderId == currentUser!.Id && x.ReceiverId == recipientId)
+        // DÜZELTME 2: 'context.Messages' yerine yukarıda hazırladığımız 'query' değişkenini kullandık.
+        List<MessageResponseDto> messages = await query
             .OrderByDescending(x => x.CreatedDate)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
@@ -84,57 +108,66 @@ public class ChatHub(UserManager<AppUser> userManager, AppDbContext context) : H
                 ReceiverId = x.ReceiverId,
                 SenderId = x.SenderId,
 
-                // --- İŞTE EKSİK OLAN VE EKLEMEN GEREKEN KISIM ---
-                // Bu satırları eklemezsen sayfa yenilenince resimler kaybolur.
-                MessageType = x.MessageType,       // Resim mi Yazı mı?
-                AttachmentUrl = x.AttachmentUrl,   // Dosya yolu
-                AttachmentName = x.AttachmentName  // Dosya adı
+                // Grup ve Dosya Bilgileri
+                GroupId = x.GroupId,
+                MessageType = x.MessageType,
+                AttachmentUrl = x.AttachmentUrl,
+                AttachmentName = x.AttachmentName
             })
             .ToListAsync();
 
-        // 2. "Görüldü" (Okundu) İşlemi
-        foreach (var message in messages)
+        // Okundu Bilgisi (Sadece birebir mesajlar için)
+        if (!groupId.HasValue)
         {
-            var msg = await context.Messages.FirstOrDefaultAsync(x => x.Id == message.Id);
-            if (msg != null && msg.ReceiverId == currentUser.Id)
+            foreach (var message in messages)
             {
-                msg.IsRead = true;
+                var msg = await context.Messages.FirstOrDefaultAsync(x => x.Id == message.Id);
+                if (msg != null && msg.ReceiverId == currentUser.Id)
+                {
+                    msg.IsRead = true;
+                }
             }
+            await context.SaveChangesAsync();
         }
-        // Döngü bittikten sonra tek seferde kaydetmek performans açısından daha iyidir
-        await context.SaveChangesAsync();
 
-        // 3. Mesaj listesini gönder
         await Clients.User(currentUser.Id).SendAsync("ReceiveMessageList", messages);
     }
 
-    public async Task SendMessage(MessageRequestDto message)
+    public async Task SendMessage(MessageRequestDto messageDto)
     {
-        var senderId = Context.User!.Identity!.Name;
-        var recipientId = message.ReceiverId;
+        var userName = Context.User!.Identity!.Name!;
+        var sender = await userManager.FindByNameAsync(userName);
 
-        // 1. Mesajı veritabanı nesnesine (Entity) çevir.
         var newMsg = new Message
         {
-            Sender = await userManager.FindByNameAsync(senderId!),
-            Receiver = await userManager.FindByIdAsync(recipientId!),
-            IsRead = false,
+            SenderId = sender!.Id,
+            Content = messageDto.Content,
+            MessageType = messageDto.MessageType,
+            AttachmentUrl = messageDto.AttachmentUrl,
+            AttachmentName = messageDto.AttachmentName,
             CreatedDate = DateTime.UtcNow,
-            Content = message.Content,
-
-            // --- EKSİK OLAN KISIMLAR BURASIYDI ---
-            // Gelen DTO'dan bu bilgileri alıp Entity'ye yazmalıyız
-            MessageType = message.MessageType,       // Enum (Text, Image, File)
-            AttachmentUrl = message.AttachmentUrl,   // Dosya yolu
-            AttachmentName = message.AttachmentName  // Dosya adı
+            IsRead = false
         };
 
-        // 2. Veritabanına kaydet.
-        context.Messages.Add(newMsg);
-        await context.SaveChangesAsync();
+        if (messageDto.GroupId.HasValue)
+        {
+            // Grup Mesajı
+            newMsg.GroupId = messageDto.GroupId.Value;
+            context.Messages.Add(newMsg);
+            await context.SaveChangesAsync();
 
-        // 3. Karşı tarafa gönder (Artık newMsg içinde dosya linki var)
-        await Clients.User(recipientId!).SendAsync("ReceiveNewMessage", newMsg);
+            await Clients.Group("Group_" + messageDto.GroupId.Value).SendAsync("ReceiveNewMessage", newMsg);
+        }
+        else
+        {
+            // Birebir Mesaj
+            newMsg.ReceiverId = messageDto.ReceiverId;
+            context.Messages.Add(newMsg);
+            await context.SaveChangesAsync();
+
+            await Clients.User(messageDto.ReceiverId!).SendAsync("ReceiveNewMessage", newMsg);
+            await Clients.Caller.SendAsync("ReceiveNewMessage", newMsg);
+        }
     }
 
     public async Task NotifyTyping(string recipientUserName)
