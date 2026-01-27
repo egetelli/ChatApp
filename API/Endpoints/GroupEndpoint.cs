@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration.UserSecrets;
 using API.Models;
 using Microsoft.AspNetCore.Identity;
+using System.Dynamic;
 
 namespace API.Endpoints;
 
@@ -69,6 +70,28 @@ public static class GroupEndpoint
             return Results.Ok(newGroup);
         });
 
+
+        group.MapGet("/my-groups", async (HttpContext context, AppDbContext db) =>
+        {
+            var userId = context.User.GetUserId();
+            if (userId == Guid.Empty) return Results.Unauthorized();
+
+            var groups = await db.GroupMembers
+                 .Where(gm => gm.UserId == userId.ToString())
+                 .Include(gm => gm.Group)
+                 .Select(gm => new
+                 {
+                     gm.GroupId,
+                     gm.Group.GroupName,
+                     gm.Group.GroupImage,
+                     gm.Group.Description,
+                     gm.IsAdmin,
+                     MemberCount = gm.Group.GroupMembers.Count()
+                 }).ToListAsync();
+
+            return Results.Ok(groups);
+        });
+
         group.MapPut("/update/{groupId}", async (HttpContext context, AppDbContext db, int groupId, CreateGroupDto dto) =>
         {
             var userId = context.User.GetUserId();
@@ -99,6 +122,40 @@ public static class GroupEndpoint
             return Results.Ok(group);
         });
 
+
+        group.MapPost("/{groupId}/add-member/{targetUserName}", async (HttpContext context, AppDbContext db, UserManager<AppUser> userManager,
+        int groupId, string targetUserName) =>
+        {
+            var currentUserId = context.User.GetUserId();
+            if (currentUserId == Guid.Empty) return Results.Unauthorized();
+
+            var group = await db.Groups
+                .Include(g => g.GroupMembers)
+                .FirstOrDefaultAsync(g => g.Id == groupId);
+            if (group is null) return Results.NotFound(new { message = "Grup bulunamadı." });
+
+            var isUserAdmin = group.GroupMembers.Any(gm => gm.UserId == currentUserId.ToString() && gm.IsAdmin);
+            if (!isUserAdmin) return Results.Json(new { message = "Üye eklemek için yönetici olmalısınız" }, statusCode: 403);
+
+            var userToAdd = await userManager.FindByNameAsync(targetUserName);
+            if (userToAdd is null) return Results.NotFound(new { message = "Kullanıcı bulunamadı." });
+
+            if (group.GroupMembers.Any(gm => gm.UserId == userToAdd.Id))
+            {
+                return Results.BadRequest(new { message = "Kullanıcı zaten bu grupta" });
+            }
+
+            db.GroupMembers.Add(new GroupMember
+            {
+                GroupId = groupId,
+                UserId = userToAdd.Id,
+                IsAdmin = false,
+                JoinedDate = DateTime.UtcNow
+            });
+
+            await db.SaveChangesAsync();
+            return Results.Ok(new { message = "Kullanıcı gruba eklendi" });
+        });
 
         group.MapDelete("/{groupId}/remove-member/{targetUserId}", async (HttpContext context, AppDbContext db, int groupId, string targetUserId) =>
         {
