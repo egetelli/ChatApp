@@ -111,31 +111,32 @@ export class ChatBoxComponent implements AfterViewChecked {
     const url = `http://localhost:5000/api/chat/download/${fileName}`;
 
     // 1. Önce HEAD isteği ile kontrol et (Angular HttpClient ile)
-    this.http.head(url, { observe: 'response' }).subscribe({
-      next: (res) => {
-        // Kontrol başarılıysa (200 OK), indirmeyi başlat
-        this.triggerDownload(url, fileName);
-      },
-      error: (error: HttpErrorResponse) => {
-        // Hata Yönetimi
-        let errorMessage = 'İndirme sırasında bir hata oluştu';
+    this.http
+      .get(url, { responseType: 'blob', observe: 'response' })
+      .subscribe({
+        next: (res) => {
+          const blob = res.body!;
+          const downloadUrl = window.URL.createObjectURL(blob);
 
-        if (error.status === 404) {
-          errorMessage = 'Dosya sunucuda bulunamadı (404) ❌';
-        } else if (error.status === 413) {
-          errorMessage = 'Dosya boyutu çok büyük! (50MB Sınırı) ⚠️';
-        } else if (error.status === 0) {
-          // CORS veya Network hatası (Backend 413 döndüğünde CORS header yoksa buraya düşer)
-          errorMessage = 'Sunucu bağlantı hatası veya dosya çok büyük ⚠️';
-        }
+          const a = document.createElement('a');
+          a.href = downloadUrl;
+          a.download = fileName;
+          a.click();
 
-        this.snackBar.open(errorMessage, 'Kapat', {
-          duration: 4000,
-          horizontalPosition: 'center',
-          verticalPosition: 'bottom',
-        });
-      },
-    });
+          window.URL.revokeObjectURL(downloadUrl);
+        },
+        error: (error: HttpErrorResponse) => {
+          let message = 'Dosya indirilemedi ❌';
+
+          if (error.status === 404) {
+            message = 'Dosya bulunamadı ❌';
+          } else if (error.status === 413) {
+            message = 'Dosya boyutu çok büyük (50MB) ⚠️';
+          }
+
+          this.snackBar.open(message, 'Kapat', { duration: 4000 });
+        },
+      });
   }
 
   // Yardımcı Metod: Gerçek indirmeyi tetikler

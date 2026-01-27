@@ -1,4 +1,5 @@
 using System;
+using System.Text.RegularExpressions;
 
 namespace API.Modals;
 
@@ -12,6 +13,10 @@ public class Message
     public bool IsRead { get; set; }
     public AppUser? Sender { get; set; }
     public AppUser? Receiver { get; set; }
+
+    // Group-related properties
+    public int? GroupId { get; set; } // Foreign key for Group
+    public Group? Group { get; set; } // Navigation property
 
     // --- YENİ EKLENEN ALANLAR ---
     public MessageType MessageType { get; set; } = MessageType.Text; // Varsayılan: Text
