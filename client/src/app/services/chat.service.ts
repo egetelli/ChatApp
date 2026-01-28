@@ -20,15 +20,30 @@ export class ChatService {
   private hubUrl = 'http://localhost:5000/hubs/chat';
 
   onlineUsers = signal<User[]>([]);
+  // currentOpenedChat şu an sadece User tutuyor. İlerde Grup objesi için generic yapılabilir.
   currentOpenedChat = signal<User | null>(null);
+
   chatMessages = signal<Message[]>([]);
   isLoading = signal<boolean>(true);
 
   private hubConnection?: HubConnection;
 
-  startConnection(token: string, senderId?: string) {
+  // -------------------------------------------------------------------------
+  // 1. BAĞLANTIYI BAŞLATMA (Grup Desteği ile)
+  // -------------------------------------------------------------------------
+  startConnection(token: string, groupId?: string, senderId?: string) {
+    // URL'i dinamik oluşturuyoruz
+    let url = this.hubUrl;
+
+    // Eğer bir kişiyle konuşuyorsak senderId, grupla konuşuyorsak groupId ekliyoruz
+    if (senderId) {
+      url += `?senderId=${senderId}`;
+    } else if (groupId) {
+      url += `?groupId=${groupId}`;
+    }
+
     this.hubConnection = new HubConnectionBuilder()
-      .withUrl(`${this.hubUrl}?senderId=${senderId || ''}`, {
+      .withUrl(url, {
         accessTokenFactory: () => token,
       })
       .withAutomaticReconnect()
@@ -37,69 +52,72 @@ export class ChatService {
     this.hubConnection
       .start()
       .then(() => {
-        console.log('Connection started');
+        console.log('SignalR Bağlantısı Başladı. URL:', url);
       })
       .catch((error) => {
-        console.log('Connection or login error', error);
+        console.log('Bağlantı hatası:', error);
       });
 
-    this.hubConnection!.on('Notify', (user: User) => {
+    // --- SIGNALR LISTENERS (Dinleyiciler) ---
+
+    this.hubConnection.on('Notify', (user: User) => {
       Notification.requestPermission().then((result) => {
         if (result == 'granted') {
-          new Notification('Active now 🌐', {
-            body: user.fullName + ' is online now',
+          new Notification('Yeni Giriş 🌐', {
+            body: user.fullName + ' çevrimiçi oldu.',
             icon: user.profileImage,
           });
         }
       });
     });
 
-    this.hubConnection!.on('OnlineUsers', (user: User[]) => {
-      console.log(user);
+    this.hubConnection.on('OnlineUsers', (user: User[]) => {
       this.onlineUsers.update(() =>
         user.filter(
-          (user) =>
-            user.userName !== this.authService.currentLoggedInUser?.userName,
+          (u) => u.userName !== this.authService.currentLoggedInUser?.userName,
         ),
       );
     });
 
-    this.hubConnection!.on('NotifyTypingToUser', (senderUserName) => {
+    this.hubConnection.on('NotifyTypingToUser', (senderUserName) => {
+      // Typing görselleştirmesi
+      this.handleTypingVisuals(senderUserName);
+    });
+
+    this.hubConnection.on('ReceiveMessageList', (messages) => {
+      this.chatMessages.set(messages);
+      this.isLoading.set(false);
+    });
+
+    this.hubConnection.on('ReceiveNewMessage', (message: Message) => {
+      document.title = '(1) Yeni Mesaj';
+      this.chatMessages.update((msgs) => [...msgs, message]);
+    });
+  }
+
+  // Typing animasyonu için yardımcı metod
+  private handleTypingVisuals(senderUserName: string) {
+    this.onlineUsers.update((users) =>
+      users.map((user) => {
+        if (user.userName.toLowerCase() === senderUserName.toLowerCase()) {
+          return { ...user, isTyping: true };
+        }
+        return user;
+      }),
+    );
+    setTimeout(() => {
       this.onlineUsers.update((users) =>
         users.map((user) => {
           if (user.userName.toLowerCase() === senderUserName.toLowerCase()) {
-            return { ...user, isTyping: true };
+            return { ...user, isTyping: false };
           }
           return user;
         }),
       );
-      setTimeout(() => {
-        this.onlineUsers.update((users) =>
-          users.map((user) => {
-            if (user.userName.toLowerCase() === senderUserName.toLowerCase()) {
-              return { ...user, isTyping: false };
-            }
-            return user;
-          }),
-        );
-      }, 3000);
-    });
-
-    this.hubConnection!.on('ReceiveMessageList', (message) => {
-      this.chatMessages.update((messages) => [...message, ...messages]);
-      this.isLoading.update(() => false);
-    });
-
-    this.hubConnection!.on('ReceiveNewMessage', (message: Message) => {
-      document.title = '(1) New Message';
-
-      this.chatMessages.update((messages) => [...messages, message]);
-    });
+    }, 3000);
   }
 
   async stopConnection() {
-    // 2. Bağlantı var mı VE Durumu "Bağlantı Kesildi" değil mi?
-    // (Bağlıysa, Bağlanıyorsa veya Yeniden Bağlanıyorsa durdurmalıyız)
     if (
       this.hubConnection &&
       this.hubConnection.state !== HubConnectionState.Disconnected
@@ -113,64 +131,68 @@ export class ChatService {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // 2. DOSYA YÜKLEME
+  // -------------------------------------------------------------------------
   uploadFile(file: File) {
     const formData = new FormData();
     formData.append('file', file);
-
     return this.http.post<{ url: string; originalName: string }>(
       `${this.apiUrl}/upload`,
       formData,
     );
   }
 
+  // -------------------------------------------------------------------------
+  // 3. MESAJ GÖNDERME
+  // -------------------------------------------------------------------------
   sendMessage(
     content: string,
     type: 'Text' | 'Image' | 'File' = 'Text',
     fileUrl?: string,
     fileName?: string,
+    groupId?: number, // Opsiyonel: Grup ID'si
   ) {
-    //Backend'e gidecek veri yapısı
     const messagePayload = {
-      receiverId: this.currentOpenedChat()?.id,
+      receiverId: this.currentOpenedChat()?.id, // Birebir ise
+      groupId: groupId, // Grup ise
       content: content,
       messageType: type,
       attachmentUrl: fileUrl,
       attachmentName: fileName,
     };
 
+    // Ekrana geçici olarak ekle (Optimistic UI)
     this.chatMessages.update((messages) => [
       ...messages,
       {
         ...messagePayload,
         senderId: this.authService.currentLoggedInUser!.id,
-        receiverId: this.currentOpenedChat()?.id!,
         createdDate: new Date().toString(),
         isRead: false,
         id: 0,
       } as any,
     ]);
-    
+
     this.hubConnection
       ?.invoke('SendMessage', messagePayload)
-      .then((id) => {
-        console.log('message send to', id);
-      })
-      .catch((error) => {
-        console.log(error);
-      });
+      .then((id) => console.log('Mesaj iletildi', id))
+      .catch((error) => console.log(error));
   }
 
+  // -------------------------------------------------------------------------
+  // 4. DİĞER YARDIMCI METODLAR
+  // -------------------------------------------------------------------------
   status(userName: string): string {
     const currentChatUser = this.currentOpenedChat();
-    if (!currentChatUser) {
-      return 'offline';
-    }
+    if (!currentChatUser) return 'offline';
 
-    const onlineUser = this.onlineUsers().find(
-      (user) => user.userName === userName,
-    );
-
-    return onlineUser?.isTyping ? 'Typing...' : this.isUserOnline();
+    const onlineUser = this.onlineUsers().find((u) => u.userName === userName);
+    return onlineUser?.isTyping
+      ? 'Yazıyor...'
+      : onlineUser?.isOnline
+        ? 'online'
+        : 'offline';
   }
 
   isUserOnline(): string {
@@ -180,9 +202,18 @@ export class ChatService {
     return onlineUser?.isOnline ? 'online' : this.currentOpenedChat()!.userName;
   }
 
-  loadMessages(pageNumber: number) {
+  // Backend imzası: LoadMessages(string? recipientId, int? groupId, int pageNumber)
+  loadMessages(pageNumber: number, groupId?: number) {
+    const recipientId = this.currentOpenedChat()?.id;
+
+    // Eğer grup ID varsa recipientId null gitmeli, yoksa tam tersi
     this.hubConnection
-      ?.invoke('LoadMessages', this.currentOpenedChat()?.id, pageNumber)
+      ?.invoke(
+        'LoadMessages',
+        groupId ? null : recipientId,
+        groupId || null,
+        pageNumber,
+      )
       .then()
       .catch()
       .finally(() => {
@@ -190,16 +221,12 @@ export class ChatService {
       });
   }
 
-  notifyTyping() {
-    this.hubConnection!.invoke(
-      'NotifyTyping',
-      this.currentOpenedChat()?.userName,
-    )
-      .then((x) => {
-        console.log('notify for', x);
-      })
-      .catch((error) => {
-        console.log(error);
-      });
+  notifyTyping(groupId?: number) {
+    const recipientUserName = this.currentOpenedChat()?.userName;
+
+    // Backend imzası: NotifyTyping(string? recipientUserName, int? groupId)
+    this.hubConnection
+      ?.invoke('NotifyTyping', recipientUserName, groupId || null)
+      .catch((error) => console.log(error));
   }
 }
