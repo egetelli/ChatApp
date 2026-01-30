@@ -7,7 +7,8 @@ import {
   HubConnectionState,
 } from '@microsoft/signalr';
 import { Message } from '../models/message';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Group } from '../models/group';
 
 @Injectable({
   providedIn: 'root',
@@ -17,10 +18,13 @@ export class ChatService {
   private http = inject(HttpClient);
 
   private apiUrl = 'http://localhost:5000/api/chat';
+  private groupUrl = 'http://localhost:5000/api/group'; // Grup işlemleri için Base URL
   private hubUrl = 'http://localhost:5000/hubs/chat';
 
   onlineUsers = signal<User[]>([]);
-  // currentOpenedChat şu an sadece User tutuyor. İlerde Grup objesi için generic yapılabilir.
+  myGroups = signal<Group[]>([]);
+  // currentOpenedChat hem User hem de Grup bilgisi tutabileceği için tipini genişletebiliriz
+  // Şimdilik User üzerinden gidiyoruz, ileride Group modelini de ekleriz.
   currentOpenedChat = signal<User | null>(null);
 
   chatMessages = signal<Message[]>([]);
@@ -29,16 +33,17 @@ export class ChatService {
   private hubConnection?: HubConnection;
 
   // -------------------------------------------------------------------------
-  // 1. BAĞLANTIYI BAŞLATMA (Grup Desteği ile)
+  // 1. BAĞLANTIYI BAŞLATMA (Grup Desteği Eklendi)
   // -------------------------------------------------------------------------
   startConnection(token: string, groupId?: string, senderId?: string) {
     // URL'i dinamik oluşturuyoruz
     let url = this.hubUrl;
 
-    // Eğer bir kişiyle konuşuyorsak senderId, grupla konuşuyorsak groupId ekliyoruz
     if (senderId) {
+      // Birebir sohbet geçmişi için
       url += `?senderId=${senderId}`;
     } else if (groupId) {
+      // Grup sohbet geçmişi için (Backend'de eklediğimiz mantık)
       url += `?groupId=${groupId}`;
     }
 
@@ -58,7 +63,7 @@ export class ChatService {
         console.log('Bağlantı hatası:', error);
       });
 
-    // --- SIGNALR LISTENERS (Dinleyiciler) ---
+    // --- LİSTENER'LAR (Dinleyiciler) ---
 
     this.hubConnection.on('Notify', (user: User) => {
       Notification.requestPermission().then((result) => {
@@ -79,13 +84,13 @@ export class ChatService {
       );
     });
 
+    // Typing olayını hem grup hem kişi için dinle
     this.hubConnection.on('NotifyTypingToUser', (senderUserName) => {
-      // Typing görselleştirmesi
       this.handleTypingVisuals(senderUserName);
     });
 
     this.hubConnection.on('ReceiveMessageList', (messages) => {
-      this.chatMessages.set(messages);
+      this.chatMessages.set(messages); // Listeyi tamamen yenile
       this.isLoading.set(false);
     });
 
@@ -95,7 +100,7 @@ export class ChatService {
     });
   }
 
-  // Typing animasyonu için yardımcı metod
+  // Helper: Typing kodunu temiz tutmak için ayırdım
   private handleTypingVisuals(senderUserName: string) {
     this.onlineUsers.update((users) =>
       users.map((user) => {
@@ -144,35 +149,67 @@ export class ChatService {
   }
 
   // -------------------------------------------------------------------------
-  // 3. MESAJ GÖNDERME
+  // 3. GRUP İŞLEMLERİ (YENİ EKLENEN BÖLÜM)
+  // -------------------------------------------------------------------------
+  createGroup(groupData: {
+    groupName: string;
+    description: string;
+    groupKey: string;
+    isPrivate: boolean;
+    groupImage: string;
+  }) {
+    // Backend: POST /api/group/create
+    const token = localStorage.getItem('token'); // Veya senin authService.accessToken
+
+    // 2. Header oluştur
+    const headers = { Authorization: `Bearer ${token}` };
+
+    // 3. İsteği header ile gönder
+    return this.http.post(`${this.groupUrl}/create`, groupData, {
+      headers: headers,
+    });
+  }
+
+  getGroups() {
+    // 1. Token'ı LocalStorage'dan al
+    // DİKKAT: Giriş yaparken kaydettiğin isim 'token' mı, 'accessToken' mı? Kontrol et.
+    const token = localStorage.getItem('token');
+
+    // 2. Header (Başlık) ayarlarını oluştur
+    const headers = new HttpHeaders({
+      Authorization: `Bearer ${token}`,
+    });
+
+    // 3. İsteği headers opsiyonu ile gönder
+    this.http
+      .get<Group[]>(`${this.groupUrl}/my-groups`, { headers: headers })
+      .subscribe({
+        next: (groups) => {
+          this.myGroups.set(groups); // Sinyali güncelle
+        },
+        error: (err) => console.error('Gruplar çekilemedi:', err),
+      });
+  }
+
+  // -------------------------------------------------------------------------
+  // 4. MESAJ GÖNDERME (Grup Desteği Eklendi)
   // -------------------------------------------------------------------------
   sendMessage(
     content: string,
     type: 'Text' | 'Image' | 'File' = 'Text',
     fileUrl?: string,
     fileName?: string,
-    groupId?: number, // Opsiyonel: Grup ID'si
+    // Opsiyonel: Eğer o an grup açıksa ID'sini göndeririz
+    groupId?: number,
   ) {
     const messagePayload = {
       receiverId: this.currentOpenedChat()?.id, // Birebir ise
-      groupId: groupId, // Grup ise
+      groupId: groupId, // Grup ise (Backend bunu kontrol ediyor)
       content: content,
       messageType: type,
       attachmentUrl: fileUrl,
       attachmentName: fileName,
     };
-
-    // Ekrana geçici olarak ekle (Optimistic UI)
-    this.chatMessages.update((messages) => [
-      ...messages,
-      {
-        ...messagePayload,
-        senderId: this.authService.currentLoggedInUser!.id,
-        createdDate: new Date().toString(),
-        isRead: false,
-        id: 0,
-      } as any,
-    ]);
 
     this.hubConnection
       ?.invoke('SendMessage', messagePayload)
@@ -181,7 +218,7 @@ export class ChatService {
   }
 
   // -------------------------------------------------------------------------
-  // 4. DİĞER YARDIMCI METODLAR
+  // 5. DİĞER YARDIMCI METODLAR
   // -------------------------------------------------------------------------
   status(userName: string): string {
     const currentChatUser = this.currentOpenedChat();
@@ -202,7 +239,7 @@ export class ChatService {
     return onlineUser?.isOnline ? 'online' : this.currentOpenedChat()!.userName;
   }
 
-  // Backend imzası: LoadMessages(string? recipientId, int? groupId, int pageNumber)
+  // LoadMessages metodunu Backend imzasına uydurduk: (recipientId, groupId, page)
   loadMessages(pageNumber: number, groupId?: number) {
     const recipientId = this.currentOpenedChat()?.id;
 
@@ -224,7 +261,6 @@ export class ChatService {
   notifyTyping(groupId?: number) {
     const recipientUserName = this.currentOpenedChat()?.userName;
 
-    // Backend imzası: NotifyTyping(string? recipientUserName, int? groupId)
     this.hubConnection
       ?.invoke('NotifyTyping', recipientUserName, groupId || null)
       .catch((error) => console.log(error));

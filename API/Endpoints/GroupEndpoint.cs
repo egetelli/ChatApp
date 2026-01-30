@@ -17,7 +17,7 @@ public static class GroupEndpoint
 {
     public static RouteGroupBuilder MapGroupEndpoint(this WebApplication app)
     {
-        var group = app.MapGroup("/api/group").WithTags("Group");
+        var group = app.MapGroup("/api/group").WithTags("Group").RequireAuthorization();
 
         group.MapPost("/create", async (HttpContext context, AppDbContext db, CreateGroupDto dto) =>
         {
@@ -67,8 +67,17 @@ public static class GroupEndpoint
             await db.SaveChangesAsync();
 
 
-            return Results.Ok(newGroup);
-        });
+            return Results.Ok(new
+            {
+                id = newGroup.Id,
+                groupName = newGroup.GroupName,
+                groupImage = newGroup.GroupImage,
+                description = newGroup.Description,
+                groupKey = newGroup.GroupKey,
+                isPrivate = newGroup.IsPrivate,
+                createdAt = newGroup.CreatedDate
+            });
+        }).RequireAuthorization();
 
 
         group.MapGet("/my-groups", async (HttpContext context, AppDbContext db) =>
@@ -119,7 +128,13 @@ public static class GroupEndpoint
             }
 
             await db.SaveChangesAsync();
-            return Results.Ok(group);
+            return Results.Ok(new
+            {
+                id = group.Id,
+                groupName = group.GroupName,
+                description = group.Description,
+                groupImage = group.GroupImage
+            });
         });
 
 

@@ -111,5 +111,6 @@ app.UseStaticFiles(new StaticFileOptions
 app.MapHub<ChatHub>("hubs/chat");
 app.MapAccountEndpoint();
 app.MapChatEndpoint();
+app.MapGroupEndpoint();
 
 app.Run(); // Uygulamayı başlat ve istekleri dinlemeye başla.

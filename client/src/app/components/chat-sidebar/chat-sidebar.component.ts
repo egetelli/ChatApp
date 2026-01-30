@@ -1,28 +1,33 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIcon, MatIconModule } from '@angular/material/icon';
+import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
-import { TitleCasePipe } from '@angular/common';
+import { CommonModule, TitleCasePipe } from '@angular/common';
 import { ChatService } from '../../services/chat.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ApiResponse } from '../../models/api-response';
-import { Observable } from 'rxjs';
 import { User } from '../../models/user';
-import { TypingIndicatorComponent } from "../typing-indicator/typing-indicator.component";
+import { TypingIndicatorComponent } from '../typing-indicator/typing-indicator.component';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { FormsModule } from '@angular/forms';
+import { Group } from '../../models/group';
 
 @Component({
   selector: 'app-chat-sidebar',
+  standalone: true,
   imports: [
     MatButtonModule,
-    MatIcon,
     MatIconModule,
     MatMenuModule,
     TitleCasePipe,
-    TypingIndicatorComponent
-],
+    TypingIndicatorComponent,
+    CommonModule,
+    MatProgressSpinnerModule,
+    FormsModule,
+  ],
   templateUrl: './chat-sidebar.component.html',
   styles: ``,
 })
@@ -31,53 +36,155 @@ export class ChatSidebarComponent implements OnInit {
   chatService = inject(ChatService);
   snackBar = inject(MatSnackBar);
   router = inject(Router);
+
+  // --- MODAL KONTROLÜ ---
+  // HTML'deki @if(isGroupModalOpen) bloğunu kontrol eder
+  isGroupModalOpen = false;
+
+  // Form Verileri
+  groupData = {
+    groupName: '',
+    description: '',
+    groupKey: '',
+    isPrivate: false,
+    groupImage: '',
+  };
+
+  selectedImageFile: File | null = null;
+  selectedImagePreview: string | null = null;
+  isLoading = false;
+  errorMessage = '';
+
+  ngOnInit(): void {
+    if (this.authService.getAccessToken) {
+      this.chatService.startConnection(this.authService.getAccessToken);
+      this.chatService.getGroups();
+    }
+  }
+
+  // --- MODAL YÖNETİMİ (AÇMA/KAPAMA) ---
+
+  openGroupModal() {
+    this.isGroupModalOpen = true;
+    this.errorMessage = ''; // Her açılışta hata mesajını temizle
+  }
+
+  closeGroupModal() {
+    this.isGroupModalOpen = false;
+    // İsterseniz modal kapandığında formu temizlemek için resetForm()'u burada da çağırabilirsiniz.
+    // this.resetForm();
+  }
+
   logout(): void {
-    // authService.logout() artık Observable<boolean> döndüğü için .subscribe() çalışacaktır
     this.authService.logout().subscribe({
       next: (result: boolean) => {
-        // Çıkış işlemi başarılı (result burada 'true' dönecektir)
         this.chatService.stopConnection();
-        this.snackBar.open('Logged out successfully', 'Close', {
+        this.snackBar.open('Başarıyla çıkış yapıldı', 'Kapat', {
           duration: 3000,
         });
       },
       error: (error: HttpErrorResponse) => {
-        // Hata durumu
         const err = error.error as ApiResponse<string>;
-        this.snackBar.open(err?.error || 'Logout error', 'Close', {
+        this.snackBar.open(err?.error || 'Çıkış hatası', 'Kapat', {
           duration: 3000,
         });
-
-        // Hata olsa bile güvenli tarafta kalmak için temizle ve yönlendir
         this.chatService.stopConnection();
         this.router.navigate(['/login']);
       },
       complete: () => {
-        // İşlem bittiğinde login sayfasına yönlendir
         this.router.navigate(['/login']);
       },
     });
   }
-  ngOnInit(): void {
-    this.chatService.startConnection(this.authService.getAccessToken!);
-  }
 
   openedChatWindow(user: User) {
-    // 1. Eğer zaten bu kullanıcıyla konuşuyorsak işlem yapma (Opsiyonel)
+    // Kendi kendine veya zaten açık olan sohbete tıklanırsa işlem yapma
     if (this.chatService.currentOpenedChat()?.id === user.id) return;
 
-    // 2. Seçili kullanıcıyı güncelle
     this.chatService.currentOpenedChat.set(user);
-
-    // 3. --- KRİTİK NOKTA ---
-    // Önceki kullanıcının mesajlarını temizle!
-    // Eğer bunu yapmazsan, gelen yeni mesajlar eskilerin üstüne eklenir.
     this.chatService.chatMessages.set([]);
-
-    // 4. Yükleniyor animasyonunu başlat
     this.chatService.isLoading.set(true);
-
-    // 5. Şimdi yeni kullanıcının mesajlarını iste (Sayfa 1)
     this.chatService.loadMessages(1);
+  }
+
+  openGroupChat(group: Group) {
+    console.log('Gruba tıklandı:', group);
+    // Burası için ChatWindow'u gruba göre ayarlamamız gerekecek.
+    // Şimdilik sadece listeliyoruz.
+  }
+
+  onGroupImageSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.selectedImageFile = file;
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.selectedImagePreview = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  // --- GRUP OLUŞTURMA ---
+
+  createGroup() {
+    if (!this.groupData.groupName) {
+      this.errorMessage = 'Lütfen bir grup adı giriniz.';
+      return;
+    }
+
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    // Eğer resim seçildiyse önce resmi yükle, sonra grubu oluştur
+    if (this.selectedImageFile) {
+      this.chatService.uploadFile(this.selectedImageFile).subscribe({
+        next: (res) => {
+          this.groupData.groupImage = res.url;
+          this.submitGroup();
+        },
+        error: (err) => {
+          this.errorMessage = 'Resim yüklenirken hata oluştu.';
+          this.isLoading = false;
+        },
+      });
+    } else {
+      // Resim yoksa direkt oluştur
+      this.submitGroup();
+    }
+  }
+
+  submitGroup() {
+    this.chatService.createGroup(this.groupData).subscribe({
+      next: (res) => {
+        this.isLoading = false;
+
+        // Modalı kapat ve formu temizle
+        this.closeGroupModal();
+        this.resetForm();
+
+        this.snackBar.open('Grup başarıyla oluşturuldu!', 'Tamam', {
+          duration: 3000,
+        });
+        this.chatService.getGroups();
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.errorMessage = err.error?.message || 'Grup oluşturulamadı.';
+      },
+    });
+  }
+
+  // Form verilerini sıfırlama yardımcı metodu
+  resetForm() {
+    this.groupData = {
+      groupName: '',
+      description: '',
+      groupKey: '',
+      isPrivate: false,
+      groupImage: '',
+    };
+    this.selectedImageFile = null;
+    this.selectedImagePreview = null;
   }
 }
