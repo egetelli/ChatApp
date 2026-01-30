@@ -26,6 +26,7 @@ export class ChatService {
   // currentOpenedChat hem User hem de Grup bilgisi tutabileceği için tipini genişletebiliriz
   // Şimdilik User üzerinden gidiyoruz, ileride Group modelini de ekleriz.
   currentOpenedChat = signal<User | null>(null);
+  currentOpenedGroup = signal<Group | null>(null);
 
   chatMessages = signal<Message[]>([]);
   isLoading = signal<boolean>(true);
@@ -58,6 +59,7 @@ export class ChatService {
       .start()
       .then(() => {
         console.log('SignalR Bağlantısı Başladı. URL:', url);
+        this.getGroups();
       })
       .catch((error) => {
         console.log('Bağlantı hatası:', error);
@@ -65,6 +67,11 @@ export class ChatService {
 
     // --- LİSTENER'LAR (Dinleyiciler) ---
 
+    this.registerListeners();
+  }
+
+  private registerListeners() {
+    if (!this.hubConnection) return;
     this.hubConnection.on('Notify', (user: User) => {
       Notification.requestPermission().then((result) => {
         if (result == 'granted') {
@@ -76,27 +83,46 @@ export class ChatService {
       });
     });
 
-    this.hubConnection.on('OnlineUsers', (user: User[]) => {
+    this.hubConnection.on('OnlineUsers', (users: User[]) => {
       this.onlineUsers.update(() =>
-        user.filter(
+        users.filter(
           (u) => u.userName !== this.authService.currentLoggedInUser?.userName,
         ),
       );
     });
 
-    // Typing olayını hem grup hem kişi için dinle
     this.hubConnection.on('NotifyTypingToUser', (senderUserName) => {
       this.handleTypingVisuals(senderUserName);
     });
 
+    // --- MESAJ LİSTESİ GELDİĞİNDE ---
     this.hubConnection.on('ReceiveMessageList', (messages) => {
-      this.chatMessages.set(messages); // Listeyi tamamen yenile
+      this.chatMessages.set(messages);
       this.isLoading.set(false);
     });
 
+    // --- YENİ MESAJ GELDİĞİNDE (KRİTİK KONTROL) ---
     this.hubConnection.on('ReceiveNewMessage', (message: Message) => {
-      document.title = '(1) Yeni Mesaj';
-      this.chatMessages.update((msgs) => [...msgs, message]);
+      // 1. Gelen mesaj şu an açık olan KİŞİDEN mi geliyor?
+      const isChatOpen =
+        this.currentOpenedChat() &&
+        (this.currentOpenedChat()?.id === message.senderId ||
+          this.currentOpenedChat()?.id === message.receiverId);
+
+      // 2. Gelen mesaj şu an açık olan GRUPTAN mı geliyor?
+      const isGroupOpen =
+        this.currentOpenedGroup() &&
+        this.currentOpenedGroup()?.groupId === message.groupId;
+
+      // Sadece ilgili pencere açıksa mesajı listeye ekle
+      if (isChatOpen || isGroupOpen) {
+        this.chatMessages.update((msgs) => [...msgs, message]);
+        // Scroll'u aşağı kaydırmak için bir event fırlatılabilir veya component effect kullanabilir.
+      } else {
+        // Başka bir yerden mesaj geldi, belki bildirim (toast) gösterebilirsin
+        console.log('Yeni mesaj var (Arkaplanda):', message);
+        document.title = '(1) Yeni Mesaj';
+      }
     });
   }
 
@@ -199,28 +225,44 @@ export class ChatService {
     type: 'Text' | 'Image' | 'File' = 'Text',
     fileUrl?: string,
     fileName?: string,
-    // Opsiyonel: Eğer o an grup açıksa ID'sini göndeririz
-    groupId?: number,
   ) {
+    // 1. O an açık olanları kontrol et
+    const activeUser = this.currentOpenedChat();
+    const activeGroup = this.currentOpenedGroup();
+
+    // Eğer ne kişi ne de grup açıksa hata ver ve çık
+    if (!activeUser && !activeGroup) {
+      console.error('Açık bir sohbet yok!');
+      return;
+    }
+
+    // 2. Payload'ı hazırla (ID mantığı burada kuruluyor)
     const messagePayload = {
-      receiverId: this.currentOpenedChat()?.id, // Birebir ise
-      groupId: groupId, // Grup ise (Backend bunu kontrol ediyor)
+      // Kişi açıksa onun ID'si, değilse null
+      receiverId: activeUser ? activeUser.id : null,
+
+      // Grup açıksa onun ID'si, değilse null (BURASI EKSİKTİ)
+      groupId: activeGroup ? activeGroup.groupId : null,
+
       content: content,
       messageType: type,
       attachmentUrl: fileUrl,
       attachmentName: fileName,
     };
 
+    console.log('Mesaj Gönderiliyor...', messagePayload); // Kontrol için log
+
+    // 3. Backend'e gönder
     this.hubConnection
       ?.invoke('SendMessage', messagePayload)
-      .then((id) => console.log('Mesaj iletildi', id))
-      .catch((error) => console.log(error));
+      .catch((error) => console.error('Mesaj gönderme hatası:', error));
   }
 
   // -------------------------------------------------------------------------
   // 5. DİĞER YARDIMCI METODLAR
   // -------------------------------------------------------------------------
   status(userName: string): string {
+    if (this.currentOpenedGroup()) return '';
     const currentChatUser = this.currentOpenedChat();
     if (!currentChatUser) return 'offline';
 
@@ -240,22 +282,32 @@ export class ChatService {
   }
 
   // LoadMessages metodunu Backend imzasına uydurduk: (recipientId, groupId, page)
-  loadMessages(pageNumber: number, groupId?: number) {
-    const recipientId = this.currentOpenedChat()?.id;
+  loadMessages(pageNumber: number) {
+    // 1. O an açık olanları sinyallerden al
+    const activeUser = this.currentOpenedChat();
+    const activeGroup = this.currentOpenedGroup();
 
-    // Eğer grup ID varsa recipientId null gitmeli, yoksa tam tersi
+    // Eğer ikisi de yoksa işlem yapma
+    if (!activeUser && !activeGroup) return;
+
+    // Loading başlat (UI'da spinner dönsün)
+    this.isLoading.set(true);
+
+    // 2. ID'leri belirle
+    // Eğer User açıksa ID'sini al, Group null olsun.
+    // Eğer Group açıksa ID'sini al, User null olsun.
+    const userId = activeUser ? activeUser.id : null;
+    const groupId = activeGroup ? activeGroup.groupId : null;
+
+    // 3. Backend'e İstek At
+    // İmza: LoadMessages(string? recipientId, int? groupId, int pageNumber)
     this.hubConnection
-      ?.invoke(
-        'LoadMessages',
-        groupId ? null : recipientId,
-        groupId || null,
-        pageNumber,
-      )
-      .then()
-      .catch()
-      .finally(() => {
-        this.isLoading.update(() => false);
+      ?.invoke('LoadMessages', userId, groupId, pageNumber)
+      .catch((err) => {
+        console.error('Mesajlar yüklenirken hata:', err);
+        this.isLoading.set(false);
       });
+    // Not: Başarılı olursa 'ReceiveMessageList' listener'ı loading'i false yapacak.
   }
 
   notifyTyping(groupId?: number) {

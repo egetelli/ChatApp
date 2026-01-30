@@ -5,6 +5,7 @@ export interface Message {
   content: string | null;
   createdDate: string;
   isRead: boolean;
+  groupId: number;
 
   // --- YENİ EKLENEN ALANLAR ---
   messageType: 'Text' | 'Image' | 'File';
