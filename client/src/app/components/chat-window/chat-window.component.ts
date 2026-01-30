@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { ChatService } from '../../services/chat.service';
-import { TitleCasePipe } from '@angular/common';
+import { CommonModule, TitleCasePipe } from '@angular/common';
 import { MatIcon } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { ChatBoxComponent } from '../chat-box/chat-box.component';
@@ -9,7 +9,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 
 @Component({
   selector: 'app-chat-window',
-  imports: [TitleCasePipe, MatIcon, FormsModule, ChatBoxComponent],
+  imports: [TitleCasePipe, MatIcon, FormsModule, ChatBoxComponent, CommonModule],
   templateUrl: './chat-window.component.html',
   styles: ``,
 })

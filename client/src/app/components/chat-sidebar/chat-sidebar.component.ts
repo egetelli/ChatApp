@@ -100,7 +100,7 @@ export class ChatSidebarComponent implements OnInit {
   openedChatWindow(user: User) {
     // Kendi kendine veya zaten açık olan sohbete tıklanırsa işlem yapma
     if (this.chatService.currentOpenedChat()?.id === user.id) return;
-
+    this.chatService.currentOpenedGroup.set(null);
     this.chatService.currentOpenedChat.set(user);
     this.chatService.chatMessages.set([]);
     this.chatService.isLoading.set(true);
@@ -108,9 +108,24 @@ export class ChatSidebarComponent implements OnInit {
   }
 
   openGroupChat(group: Group) {
-    console.log('Gruba tıklandı:', group);
-    // Burası için ChatWindow'u gruba göre ayarlamamız gerekecek.
-    // Şimdilik sadece listeliyoruz.
+    // Eğer zaten bu grup açıksa işlem yapma
+    if (this.chatService.currentOpenedGroup()?.groupId === group.groupId)
+      return;
+
+    // 1. Sinyalleri Güncelle
+    // Açık olan kişisel sohbeti kapat (null yap)
+    this.chatService.currentOpenedChat.set(null);
+    // Grubu Set et (Artık aktif olan bu)
+    this.chatService.currentOpenedGroup.set(group);
+
+    // 2. UI Hazırlığı
+    this.chatService.chatMessages.set([]); // Eski mesajları temizle
+    this.chatService.isLoading.set(true); // Yükleniyor göster
+
+    // 3. Mesajları Yükle
+    // loadGroupMessages YERİNE loadMessages çağırıyoruz.
+    // Parametre göndermiyoruz çünkü yukarıda (1. adımda) grubu set ettik, servis onu görecek.
+    this.chatService.loadMessages(1);
   }
 
   onGroupImageSelected(event: any) {
