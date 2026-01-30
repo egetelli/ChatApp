@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration.UserSecrets;
 using API.Models;
 using Microsoft.AspNetCore.Identity;
 using System.Dynamic;
+using Microsoft.AspNetCore.Mvc;
 
 namespace API.Endpoints;
 
@@ -170,6 +171,57 @@ public static class GroupEndpoint
 
             await db.SaveChangesAsync();
             return Results.Ok(new { message = "Kullanıcı gruba eklendi" });
+        });
+
+        group.MapPost("/{groupId}/add-members", async (HttpContext context, AppDbContext db, UserManager<AppUser> userManager,
+             int groupId, [FromBody] AddMembersDto dto) =>
+        {
+            var currentUserId = context.User.GetUserId();
+            if (currentUserId == Guid.Empty) return Results.Unauthorized();
+
+            var group = await db.Groups
+                .Include(g => g.GroupMembers)
+                .FirstOrDefaultAsync(g => g.Id == groupId);
+            if (group is null) return Results.NotFound(new { message = "Grup bulunamadı." });
+
+            var isUserAdmin = group.GroupMembers.Any(gm => gm.UserId == currentUserId.ToString() && gm.IsAdmin);
+            if (!isUserAdmin) return Results.Json(new { message = "Üye eklemek için yönetici olmalısınız" }, statusCode: 403);
+
+            var addedCount = 0;
+            var errors = new List<string>();
+
+            foreach (var userName in dto.UserNames)
+            {
+                var userToAdd = await userManager.FindByNameAsync(userName);
+                if (userToAdd is null)
+                {
+                    errors.Add($"{userName} bulunamadı.");
+                    continue;
+                }
+
+                if (group.GroupMembers.Any(gm => gm.UserId == userToAdd.Id))
+                {
+                    // Zaten üyeyse pas geç
+                    continue;
+                }
+
+                db.GroupMembers.Add(new GroupMember
+                {
+                    GroupId = groupId,
+                    UserId = userToAdd.Id,
+                    IsAdmin = false,
+                    JoinedDate = DateTime.UtcNow
+                });
+                addedCount++;
+            }
+
+            if (addedCount > 0)
+            {
+                await db.SaveChangesAsync();
+                return Results.Ok(new { message = $"{addedCount} kişi gruba eklendi.", errors });
+            }
+
+            return Results.BadRequest(new { message = "Kimse eklenemedi.", errors });
         });
 
         group.MapDelete("/{groupId}/remove-member/{targetUserId}", async (HttpContext context, AppDbContext db, int groupId, string targetUserId) =>

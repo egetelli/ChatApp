@@ -317,4 +317,38 @@ export class ChatService {
       ?.invoke('NotifyTyping', recipientUserName, groupId || null)
       .catch((error) => console.log(error));
   }
+
+  // 1. TOPLU ÜYE EKLEME
+  addMembersToGroup(groupId: number, userNames: string[]) {
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+
+    return this.http.post(
+      `${this.groupUrl}/${groupId}/add-members`,
+      { userNames }, // Body: { userNames: ["ahmet", "mehmet"] }
+      { headers },
+    );
+  }
+
+  // 2. GRUPTAN AYRILMA (Kendi isteğiyle)
+  leaveGroup(groupId: number) {
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+    const currentUserId = this.authService.currentLoggedInUser?.id;
+
+    // Backend'deki remove-member endpointi 'targetUserId' istiyor.
+    // Kendimizi sildiğimiz için kendi ID'mizi yolluyoruz.
+    return this.http.delete(
+      `${this.groupUrl}/${groupId}/remove-member/${currentUserId}`,
+      { headers },
+    );
+  }
+
+  searchUsers(query: string) {
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+    return this.http.get<User[]>(`${this.apiUrl}/search-users?query=${query}`, {
+      headers,
+    });
+  }
 }
