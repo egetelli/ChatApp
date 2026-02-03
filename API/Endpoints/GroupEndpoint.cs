@@ -263,6 +263,28 @@ public static class GroupEndpoint
             return Results.Ok(new { message = isSelfRemoval ? "Gruptan ayrıldınız." : "Üye başarıyla çıkarıldı." });
         });
 
+        group.MapPut("/{groupId}/make-admin/{targetUserId}", async (HttpContext context, AppDbContext db, int groupId, string targetUserId) =>
+        {
+            var currentUserId = context.User.GetUserId();
+            if (currentUserId == Guid.Empty) return Results.Unauthorized();
+
+            var group = await db.Groups
+                .Include(g => g.GroupMembers)
+                .FirstOrDefaultAsync(g => g.Id == groupId);
+            if (group is null) return Results.NotFound(new { message = "Grup bulunamadı." });
+
+            var isUserAdmin = group.GroupMembers.Any(gm => gm.UserId == currentUserId.ToString() && gm.IsAdmin);
+            if (!isUserAdmin) return Results.Json(new { message = "Yönetici yetkisi gerekiyor." }, statusCode: 403);
+
+            var memberToPromote = group.GroupMembers.FirstOrDefault(gm => gm.UserId == targetUserId);
+            if (memberToPromote is null) return Results.NotFound(new { message = "Bu kullanıcı zaten grubun üyesi değil." });
+
+            memberToPromote.IsAdmin = true;
+            await db.SaveChangesAsync();
+
+            return Results.Ok(new { message = "Üye yönetici yapıldı." });
+        });
+
         return group;
     }
 
