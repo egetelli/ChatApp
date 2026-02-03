@@ -69,7 +69,7 @@ Projeyi yerel makinenizde çalıştırmak için aşağıdaki adımları izleyin.
 
 * [.NET 8 SDK](https://dotnet.microsoft.com/download)
 * [Node.js](https://nodejs.org/) (LTS sürümü önerilir)
-* [SQLite]([https://www.microsoft.com/en-us/sql-server/sql-server-downloads](https://sqlite.org/download.html)) (veya LocalDB)
+* [SQLite](https://sqlite.org/download.html) (veya LocalDB)
 
 ### 1. Backend Kurulumu
 
@@ -121,12 +121,10 @@ ng serve
 
 ### Veritabanı Bağlantısı
 
-`API/appsettings.json` dosyasında `DefaultConnection` alanını güncelleyin:
+`API/program.cs` dosyasında `SQLite` alanını ekleyin:
 
-```json
-"ConnectionStrings": {
-  "DefaultConnection": "Server=localhost;Database=ChatAppDb;Trusted_Connection=True;TrustServerCertificate=True;"
-}
+```
+builder.Services.AddDbContext<AppDbContext>(x => x.UseSqlite("Data Source=chat.db"));
 
 ```
 
