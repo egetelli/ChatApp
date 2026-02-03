@@ -51,7 +51,7 @@ Proje, endüstri standardı en güncel teknolojiler kullanılarak geliştirilmi�
 * **API Mimarisi:** **Minimal APIs** (Hafif ve hızlı endpoint tanımlamaları)
 * **Gerçek Zamanlı İletişim:** **SignalR** (WebSockets)
 * **ORM:** **Entity Framework Core**
-* **Veritabanı:** SQL Server (MSSQL)
+* **Veritabanı:** SQLite
 * **Kimlik Doğrulama:** JWT (JSON Web Token) Bearer Authentication
 * **Dosya Yönetimi:** Statik dosya sunucusu (Static Files)
 
