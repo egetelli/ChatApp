@@ -69,7 +69,7 @@ Projeyi yerel makinenizde çalıştırmak için aşağıdaki adımları izleyin.
 
 * [.NET 8 SDK](https://dotnet.microsoft.com/download)
 * [Node.js](https://nodejs.org/) (LTS sürümü önerilir)
-* [SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) (veya LocalDB)
+* [SQLite]([https://www.microsoft.com/en-us/sql-server/sql-server-downloads](https://sqlite.org/download.html)) (veya LocalDB)
 
 ### 1. Backend Kurulumu
 
