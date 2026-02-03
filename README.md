@@ -1,7 +1,3 @@
-Harika bir proje ortaya çıkardık! Emeklerini güzelce sunacak, profesyonel, modern ve detaylı bir `README.md` dosyasını senin için hazırladım.
-
-Bunu projenin kök dizinine `README.md` olarak kaydedebilirsin.
-
 ---
 
 # 💬 Modern Real-Time Chat Application
