@@ -16,6 +16,10 @@
 
         @for (item of chatService.chatMessages(); track item.id) {
 
+        <!-- <div style="background: #333; color: #0f0; padding: 10px; font-size: 10px; margin-bottom: 10px;">
+            <strong>DEBUG - Mesaj ID: {{ item.id }}</strong>
+            <pre>{{ item | json }}</pre>
+        </div> -->
         <!-- Mesaj Hizalama -->
         <div class="flex mb-3 flex-row items-center"
             [class.justify-normal]="item.senderId !== authService.currentLoggedInUser?.id"
@@ -23,9 +27,11 @@
 
             <!-- Karşı Tarafın Profil Resmi -->
             @if(item.senderId !== authService.currentLoggedInUser?.id){
-            <div
-                class="flex items-center justify-center h-10 w-10 rounded-full bg-linear-to-r from-green-400 to-blue-500 shrink-0 mr-2">
-                <img [src]="chatService.currentOpenedChat()?.profileImage" class="rounded-full h-8 w-8 object-cover" />
+            <div class="shrink-0 mr-2 mb-1">
+                <img [src]="item.senderProfileImage ? item.senderProfileImage : 'https://ui-avatars.com/api/?name=' + (item.senderUserName || 'User') + '&background=random&color=fff'"
+                    class="rounded-full h-8 w-8 object-cover border border-gray-200 shadow-sm bg-gray-100"
+                    onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=User&background=random&color=fff'"
+                    [title]="item.senderUserName" />
             </div>
             }
 
