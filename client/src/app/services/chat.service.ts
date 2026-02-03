@@ -351,4 +351,23 @@ export class ChatService {
       headers,
     });
   }
+
+  makeGroupAdmin(groupId: number, targetUserId: string) {
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+
+    return this.http.put(
+      `${this.groupUrl}/${groupId}/make-admin/${targetUserId}`,
+      {},
+      { headers },
+    );
+  }
+
+  getGroupMembers(groupId: number) {
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
+    return this.http.get<any[]>(`${this.groupUrl}/${groupId}/members`, {
+      headers,
+    });
+  }
 }
