@@ -117,7 +117,7 @@ ng serve
 | Sohbet Ekranı | Grup Yönetimi |
 | --- | --- |
 |  |  |
-| *(Buraya projenin ekran görüntülerini ekleyebilirsiniz)* |  |
+| *(eklenecek)* |  |
 
 ---
 
