@@ -75,7 +75,8 @@ public class ChatHub(UserManager<AppUser> userManager, AppDbContext context) : H
         var currentUser = await userManager.FindByNameAsync(userName);
         if (currentUser is null) return;
 
-        IQueryable<Message> query = context.Messages;
+        // 1. ADIM: Sender (User) tablosunu sorguya dahil et (.Include)
+        IQueryable<Message> query = context.Messages.Include(m => m.Sender);
 
         if (groupId.HasValue)
         {
@@ -107,22 +108,34 @@ public class ChatHub(UserManager<AppUser> userManager, AppDbContext context) : H
                 GroupId = x.GroupId,
                 MessageType = x.MessageType,
                 AttachmentUrl = x.AttachmentUrl,
-                AttachmentName = x.AttachmentName
+                AttachmentName = x.AttachmentName,
+                IsRead = x.IsRead,
+
+                // 2. ADIM: Gönderici bilgilerini DTO'ya ekle
+                // Sender null gelebilir mi kontrolüyle beraber
+                SenderProfileImage = x.Sender != null ? x.Sender.ProfileImage : null,
+                SenderFullName = x.Sender != null ? x.Sender.FullName : null,
+                SenderUserName = x.Sender != null ? x.Sender.UserName : null
             })
             .ToListAsync();
 
+        // Okundu olarak işaretleme mantığı (Aynen korundu)
         if (!groupId.HasValue)
         {
-            foreach (var message in messages)
+            // Not: Burada tekrar DB'den çekmek yerine sadece ID'leri kullanabilirsin ama
+            // Entity takibi açısından mevcut kodun kalmasında sakınca yok.
+            var unreadMessages = await context.Messages
+                .Where(x => (x.ReceiverId == currentUser.Id && x.SenderId == recipientId) && !x.IsRead)
+                .ToListAsync();
+
+            if (unreadMessages.Any())
             {
-                var msg = await context.Messages.FirstOrDefaultAsync(x => x.Id == message.Id);
-                if (msg != null && msg.ReceiverId == currentUser.Id)
+                foreach (var msg in unreadMessages)
                 {
                     msg.IsRead = true;
                 }
+                await context.SaveChangesAsync();
             }
-
-            await context.SaveChangesAsync();
         }
 
         await Clients.User(currentUser.Id).SendAsync("ReceiveMessageList", messages);

@@ -11,4 +11,8 @@ export interface Message {
   messageType: 'Text' | 'Image' | 'File';
   attachmentUrl?: string;
   attachmentName?: string;
+
+  senderProfileImage?: string;
+  senderFullName?: string;
+  senderUserName?: string;
 }
