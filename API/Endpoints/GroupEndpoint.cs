@@ -20,6 +20,42 @@ public static class GroupEndpoint
     {
         var group = app.MapGroup("/api/group").WithTags("Group").RequireAuthorization();
 
+        group.MapGet("/{groupId}/members", async (HttpContext context, AppDbContext db, int groupId) =>
+        {
+            var currentUserId = context.User.GetUserId();
+            if (currentUserId == Guid.Empty) return Results.Unauthorized();
+
+            // 1. Önce grubun varlığını ve kullanıcının üye olup olmadığını kontrol et
+            // (Performans için sadece gerekli alanları çekiyoruz)
+            var isMember = await db.GroupMembers
+                .AnyAsync(gm => gm.GroupId == groupId && gm.UserId == currentUserId.ToString());
+
+            if (!isMember)
+            {
+                return Results.Json(new { message = "Bu grubun üyelerini görme yetkiniz yok." }, statusCode: 403);
+            }
+
+            // 2. Üyeleri ve kullanıcı detaylarını çek (Join işlemi)
+            var members = await db.GroupMembers
+                .Where(gm => gm.GroupId == groupId)
+                .Join(db.Users,             // AppUsers tablosuyla birleştir
+                      gm => gm.UserId,      // GroupMember.UserId
+                      u => u.Id,            // AppUser.Id
+                      (gm, u) => new        // Sonuç objesini oluştur
+                      {
+                          userId = u.Id,
+                          userName = u.UserName,
+                          fullName = u.FullName,
+                          profileImage = u.ProfileImage,
+                          isAdmin = gm.IsAdmin,
+                          joinedDate = gm.JoinedDate
+                      })
+                .OrderByDescending(m => m.isAdmin) // Yöneticiler en üstte
+                .ThenBy(m => m.fullName)           // Sonra isme göre
+                .ToListAsync();
+
+            return Results.Ok(members);
+        });
         group.MapPost("/create", async (HttpContext context, AppDbContext db, CreateGroupDto dto) =>
         {
             var creatorId = context.User.GetUserId();
@@ -283,6 +319,41 @@ public static class GroupEndpoint
             await db.SaveChangesAsync();
 
             return Results.Ok(new { message = "Üye yönetici yapıldı." });
+        });
+
+        // --- [YENİ] YÖNETİCİLİĞİ GERİ AL (REVOKE ADMIN) ---
+        group.MapPut("/{groupId}/revoke-admin/{targetUserId}", async (HttpContext context, AppDbContext db, int groupId, string targetUserId) =>
+        {
+            var currentUserId = context.User.GetUserId();
+            if (currentUserId == Guid.Empty) return Results.Unauthorized();
+
+            var group = await db.Groups
+                .Include(g => g.GroupMembers)
+                .FirstOrDefaultAsync(g => g.Id == groupId);
+            if (group is null) return Results.NotFound(new { message = "Grup bulunamadı." });
+
+            // İşlemi yapan kişi yönetici mi?
+            var isUserAdmin = group.GroupMembers.Any(gm => gm.UserId == currentUserId.ToString() && gm.IsAdmin);
+            if (!isUserAdmin) return Results.Json(new { message = "Yönetici yetkisi gerekiyor." }, statusCode: 403);
+
+            // Hedef kişi grupta mı?
+            var memberToDemote = group.GroupMembers.FirstOrDefault(gm => gm.UserId == targetUserId);
+            if (memberToDemote is null) return Results.NotFound(new { message = "Kullanıcı bulunamadı." });
+
+            // Hedef zaten yönetici değilse?
+            if (!memberToDemote.IsAdmin) return Results.BadRequest(new { message = "Kullanıcı zaten yönetici değil." });
+
+            // SON YÖNETİCİ KONTROLÜ: Grupta tek yönetici kaldıysa onun yetkisini alamasın
+            var adminCount = group.GroupMembers.Count(gm => gm.IsAdmin);
+            if (adminCount <= 1)
+            {
+                return Results.BadRequest(new { message = "Gruptaki son yönetici bu kişi. Yetkisini almadan önce başka birini yönetici yapmalısınız." });
+            }
+
+            memberToDemote.IsAdmin = false;
+            await db.SaveChangesAsync();
+
+            return Results.Ok(new { message = "Yöneticilik yetkisi alındı." });
         });
 
         return group;

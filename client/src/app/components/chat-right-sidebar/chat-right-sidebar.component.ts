@@ -6,6 +6,9 @@ import { ChatService } from '../../services/chat.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
 import { User } from '../../models/user';
+import { GroupMember } from '../../models/group-member';
+import { AuthService } from '../../services/auth.service';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 
 @Component({
   selector: 'app-chat-right-sidebar',
@@ -16,20 +19,27 @@ import { User } from '../../models/user';
     MatButtonModule,
     TitleCasePipe,
     FormsModule,
+    MatProgressSpinner,
   ],
   templateUrl: './chat-right-sidebar.component.html',
 })
 export class ChatRightSidebarComponent {
   chatService = inject(ChatService);
   snackBar = inject(MatSnackBar);
+  authService = inject(AuthService);
 
   // Modal Kontrolü
   isAddMemberModalOpen = false;
-
   // Üye Ekleme Formu için
   searchTerm: string = '';
   searchResults: User[] = []; // Aramadan dönen kullanıcılar
   selectedUsers: Set<string> = new Set(); // Seçilen kullanıcı adları (Set ile unique tutuyoruz)
+
+  //Üye yönetimi değişkenleri
+  isMembersModalOpen = false;
+  isLoadingMembers = false;
+  groupMembers: GroupMember[] = [];
+  amIAdmin = false;
 
   // --- GRUPTAN AYRILMA ---
   leaveGroup(groupId: number) {
@@ -47,6 +57,74 @@ export class ChatRightSidebarComponent {
         });
       },
     });
+  }
+
+  //Üye listeleme modalı
+  openMembersModal() {
+    const currentGroup = this.chatService.currentOpenedGroup();
+    if (!currentGroup) return;
+
+    this.isMembersModalOpen = true;
+    this.isLoadingMembers = true;
+
+    this.chatService.getGroupMembers(currentGroup.groupId).subscribe({
+      next: (res: any) => {
+        this.groupMembers = res;
+        this.checkMyRole();
+        this.isLoadingMembers = false;
+      },
+      error: (err) => {
+        console.error(err);
+        this.isLoadingMembers = false;
+        this.snackBar.open('Üye listesi yüklenemedi', 'Kapat', {
+          duration: 3000,
+        });
+      },
+    });
+  }
+
+  //Listede kendini bulup Admin miyim kontrolü yapma
+  checkMyRole() {
+    const myUserId = this.authService.currentUser()?.id;
+    const myMemberRecord = this.groupMembers.find((m) => m.userId === myUserId);
+
+    this.amIAdmin = myMemberRecord ? myMemberRecord.isAdmin : false;
+  }
+
+  closeMembersModal() {
+    this.isMembersModalOpen = false;
+  }
+
+  makeAdmin(targetUserId: string) {
+    const currentGroup = this.chatService.currentOpenedGroup();
+    if (!currentGroup) return;
+
+    if (!confirm('Bu kullanıcıyı yönetici yapmak istediğinize emin misiniz?'))
+      return;
+
+    this.chatService
+      .makeGroupAdmin(currentGroup.groupId, targetUserId)
+      .subscribe({
+        next: (res: any) => {
+          this.snackBar.open('Kullanıcı yönetici yapıldı.', 'Tamam', {
+            duration: 3000,
+          });
+
+          // --- [DÜZELTME] Anlık Güncelleme ---
+          // Backend'e gitmek yerine listedeki o kişiyi bul ve yetkisini değiştir
+          const member = this.groupMembers.find(
+            (m) => m.userId === targetUserId,
+          );
+          if (member) {
+            member.isAdmin = true;
+          }
+        },
+        error: (err) => {
+          this.snackBar.open(err.error?.message || 'Hata oluştu.', 'Kapat', {
+            duration: 3000,
+          });
+        },
+      });
   }
 
   // --- ÜYE EKLEME MODALI ---
@@ -90,6 +168,76 @@ export class ChatRightSidebarComponent {
     } else {
       this.selectedUsers.add(userName);
     }
+  }
+
+  // --- [YENİ] YÖNETİCİLİĞİ GERİ AL ---
+  revokeAdmin(targetUserId: string) {
+    const currentGroup = this.chatService.currentOpenedGroup();
+    if (!currentGroup) return;
+
+    if (
+      !confirm(
+        'Bu kullanıcının yöneticilik yetkisini almak istediğinize emin misiniz?',
+      )
+    )
+      return;
+
+    this.chatService
+      .revokeGroupAdmin(currentGroup.groupId, targetUserId)
+      .subscribe({
+        next: (res: any) => {
+          this.snackBar.open('Yöneticilik yetkisi alındı.', 'Tamam', {
+            duration: 3000,
+          });
+
+          // --- [DÜZELTME] Anlık Güncelleme ---
+          const member = this.groupMembers.find(
+            (m) => m.userId === targetUserId,
+          );
+          if (member) {
+            member.isAdmin = false;
+          }
+        },
+        error: (err) => {
+          this.snackBar.open(err.error?.message || 'Hata oluştu.', 'Kapat', {
+            duration: 3000,
+          });
+        },
+      });
+  }
+
+  // --- [YENİ] GRUPTAN AT (KICK) ---
+  kickUser(targetUserId: string) {
+    const currentGroup = this.chatService.currentOpenedGroup();
+    if (!currentGroup) return;
+
+    if (!confirm('Bu kullanıcıyı gruptan çıkarmak istediğinize emin misiniz?'))
+      return;
+
+    this.chatService.kickMember(currentGroup.groupId, targetUserId).subscribe({
+      next: (res: any) => {
+        this.snackBar.open('Kullanıcı gruptan çıkarıldı.', 'Tamam', {
+          duration: 3000,
+        });
+
+        // --- [DÜZELTME] Anlık Güncelleme ---
+        // 1. Kullanıcıyı listeden sil
+        this.groupMembers = this.groupMembers.filter(
+          (m) => m.userId !== targetUserId,
+        );
+
+        // 2. Üstteki "Üye Sayısı"nı güncelle (Signal)
+        this.chatService.currentOpenedGroup.set({
+          ...currentGroup,
+          memberCount: (currentGroup.memberCount || 1) - 1,
+        });
+      },
+      error: (err) => {
+        this.snackBar.open(err.error?.message || 'Hata oluştu.', 'Kapat', {
+          duration: 3000,
+        });
+      },
+    });
   }
 
   submitAddMembers(groupId: number) {
