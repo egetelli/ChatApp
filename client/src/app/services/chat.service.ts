@@ -289,6 +289,23 @@ export class ChatService {
     );
   }
 
+  // 1. Yöneticiliği Geri Al
+  revokeGroupAdmin(groupId: number, targetUserId: string) {
+    // Header (Interceptor hallediyor)
+    return this.http.put(
+      `${this.groupUrl}/${groupId}/revoke-admin/${targetUserId}`,
+      {},
+    );
+  }
+
+  // 2. Üye Çıkar (Kick) - Mevcut leaveGroup metodundan farklı olarak targetUserId parametresi alıyor
+  kickMember(groupId: number, targetUserId: string) {
+    // Header (Interceptor hallediyor)
+    return this.http.delete(
+      `${this.groupUrl}/${groupId}/remove-member/${targetUserId}`,
+    );
+  }
+
   getGroupMembers(groupId: number) {
     // Header yok.
     return this.http.get<any[]>(`${this.groupUrl}/${groupId}/members`);
