@@ -22,11 +22,11 @@
         </div> -->
         <!-- Mesaj Hizalama -->
         <div class="flex mb-3 flex-row items-center"
-            [class.justify-normal]="item.senderId !== authService.currentLoggedInUser?.id"
-            [class.justify-end]="item.senderId === authService.currentLoggedInUser?.id">
+            [class.justify-normal]="item.senderId !== authService.currentUser()?.id"
+            [class.justify-end]="item.senderId === authService.currentUser()?.id">
 
             <!-- Karşı Tarafın Profil Resmi -->
-            @if(item.senderId !== authService.currentLoggedInUser?.id){
+            @if(item.senderId !== authService.currentUser()?.id){
             <div class="shrink-0 mr-2 mb-1">
                 <img [src]="item.senderProfileImage ? item.senderProfileImage : 'https://ui-avatars.com/api/?name=' + (item.senderUserName || 'User') + '&background=random&color=fff'"
                     class="rounded-full h-8 w-8 object-cover border border-gray-200 shadow-sm bg-gray-100"
@@ -37,9 +37,9 @@
 
             <!-- Mesaj Kutusu -->
             <div class="chat-message p-3 rounded-lg shadow-sm max-w-[70%] relative group"
-                [class.bg-white]="item.senderId !== authService.currentLoggedInUser?.id"
-                [class.bg-blue-600]="item.senderId === authService.currentLoggedInUser?.id"
-                [class.text-white]="item.senderId === authService.currentLoggedInUser?.id">
+                [class.bg-white]="item.senderId !== authService.currentUser()?.id"
+                [class.bg-blue-600]="item.senderId === authService.currentUser()?.id"
+                [class.text-white]="item.senderId === authService.currentUser()?.id">
 
                 <!-- =========================== -->
                 <!-- 1. RESİM GÖRÜNÜMÜ          -->
@@ -63,10 +63,10 @@
                 <!-- =========================== -->
                 @else if(item.messageType === 'File'){
                 <div class="flex items-center gap-3 p-3 rounded mb-2 border transition-colors relative"
-                    [class.bg-gray-100]="item.senderId !== authService.currentLoggedInUser?.id"
-                    [class.bg-blue-500]="item.senderId === authService.currentLoggedInUser?.id"
-                    [class.border-gray-200]="item.senderId !== authService.currentLoggedInUser?.id"
-                    [class.border-blue-400]="item.senderId === authService.currentLoggedInUser?.id">
+                    [class.bg-gray-100]="item.senderId !== authService.currentUser()?.id"
+                    [class.bg-blue-500]="item.senderId === authService.currentUser()?.id"
+                    [class.border-gray-200]="item.senderId !== authService.currentUser()?.id"
+                    [class.border-blue-400]="item.senderId === authService.currentUser()?.id">
 
                     <div class="bg-white/20 p-2 rounded-full">
                         <mat-icon>description</mat-icon>
@@ -82,7 +82,7 @@
                     <!-- Dosya İndirme Butonu -->
                     <button (click)="downloadFile(item.attachmentUrl)"
                         class="ml-auto p-2 rounded-full flex items-center justify-center transition-colors shadow-sm cursor-pointer z-10"
-                        [class]="item.senderId !== authService.currentLoggedInUser?.id 
+                        [class]="item.senderId !== authService.currentUser()?.id 
                             ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' 
                             : 'bg-white/20 text-white hover:bg-white/30'" title="İndir">
                         <mat-icon style="font-size: 20px;">download</mat-icon>
@@ -101,7 +101,7 @@
                 <div class="flex items-center justify-end gap-1 mt-1 opacity-70">
                     <span class="text-[10px]">{{ item.createdDate | date:'shortTime' }}</span>
                     <!-- Okundu Bilgisi (Sadece bizim mesajlarımızda) -->
-                    @if(item.senderId === authService.currentLoggedInUser?.id){
+                    @if(item.senderId === authService.currentUser()?.id){
                     <mat-icon style="font-size: 14px; width: 14px; height: 14px;" [class.text-blue-200]="!item.isRead"
                         [class.text-green-300]="item.isRead">
                         {{ item.isRead ? 'done_all' : 'check' }}
@@ -111,10 +111,10 @@
             </div>
 
             <!-- Bizim Profil Resmimiz -->
-            @if(item.senderId === authService.currentLoggedInUser?.id){
+            @if(item.senderId === authService.currentUser()?.id){
             <div
                 class="flex items-center justify-center h-10 w-10 rounded-full bg-linear-to-r from-blue-500 to-purple-500 shrink-0 ml-2">
-                <img [src]="authService.currentLoggedInUser?.profileImage" class="rounded-full h-8 w-8 object-cover" />
+                <img [src]="authService.currentUser()?.profileImage" class="rounded-full h-8 w-8 object-cover" />
             </div>
             }
         </div>

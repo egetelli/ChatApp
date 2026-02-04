@@ -76,25 +76,20 @@ export class ChatSidebarComponent implements OnInit {
   }
 
   logout(): void {
-    this.authService.logout().subscribe({
-      next: (result: boolean) => {
-        this.chatService.stopConnection();
-        this.snackBar.open('Başarıyla çıkış yapıldı', 'Kapat', {
-          duration: 3000,
-        });
-      },
-      error: (error: HttpErrorResponse) => {
-        const err = error.error as ApiResponse<string>;
-        this.snackBar.open(err?.error || 'Çıkış hatası', 'Kapat', {
-          duration: 3000,
-        });
-        this.chatService.stopConnection();
-        this.router.navigate(['/login']);
-      },
-      complete: () => {
-        this.router.navigate(['/login']);
-      },
+    // 1. Önce Chat bağlantısını koparalım (Temizlik)
+    this.chatService.stopConnection();
+
+    // 2. AuthService'deki logout'u düz fonksiyon gibi çağırıyoruz
+    // (Artık subscribe yok çünkü işlem anlık gerçekleşiyor)
+    this.authService.logout();
+
+    // 3. Bilgi mesajı gösterelim
+    this.snackBar.open('Başarıyla çıkış yapıldı', 'Kapat', {
+      duration: 3000,
     });
+
+    // Not: AuthService içinde zaten router.navigate(['/login']) yapmıştık.
+    // O yüzden burada tekrar navigate yapmana gerek yok.
   }
 
   openedChatWindow(user: User) {

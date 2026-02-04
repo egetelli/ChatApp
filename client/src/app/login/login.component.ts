@@ -18,8 +18,8 @@ import { Router, RouterLink } from '@angular/router';
     MatIcon,
     FormsModule,
     MatInputModule,
-    RouterLink
-],
+    RouterLink,
+  ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
 })
@@ -32,20 +32,19 @@ export class LoginComponent {
   private router = inject(Router);
 
   hide = signal(false);
+
   login() {
     this.authService.login(this.email, this.password).subscribe({
       next: () => {
-        this.authService.me().subscribe();
-        this.snackBar.open('Logged in successfully', 'Close');
+        // me() serviste zincirleme çağrıldı, user set edildi.
+        // Sadece yönlendirme yapıyoruz.
+        this.router.navigate(['/chat']);
+        this.snackBar.open('Giriş başarılı', 'Kapat', { duration: 2000 });
       },
       error: (error: HttpErrorResponse) => {
-        let err = error.error as ApiResponse<string>;
-        this.snackBar.open(err.error, 'Close', {
-          duration: 3000,
-        });
-      },
-      complete: () => {
-        this.router.navigate(['/']);
+        // Backend'den gelen hata formatına göre burayı düzenle
+        const message = error.error?.message || 'Giriş başarısız';
+        this.snackBar.open(message, 'Kapat', { duration: 3000 });
       },
     });
   }
