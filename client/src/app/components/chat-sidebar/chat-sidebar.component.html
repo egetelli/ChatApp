@@ -3,12 +3,12 @@
     <div class="flex items-center justify-between bg-white z-10 sticky top-0 p-2 w-full shadow-sm rounded-lg mb-4">
         <div class="flex items-center gap-3">
             <img class="h-10 w-10 rounded-full border-2 border-blue-100 object-cover"
-                [src]="authService.currentLoggedInUser!.profileImage || 'assets/default-avatar.png'"
+                [src]="authService.currentUser()!.profileImage || 'assets/default-avatar.png'"
                 alt="Profile Picture">
 
             <div class="flex flex-col">
                 <span class="font-semibold text-gray-800 text-sm">
-                    {{ authService.currentLoggedInUser?.fullName | titlecase }}
+                    {{ authService.currentUser()?.fullName | titlecase }}
                 </span>
                 <span class="text-xs text-green-500 font-medium">Çevrimiçi</span>
             </div>

@@ -3,9 +3,14 @@ import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
 export const authGuard: CanActivateFn = (route, state) => {
-  if (inject(AuthService).isLoggedIn()) {
+  const router = inject(Router);
+  const authService = inject(AuthService);
+
+  if (authService.isLoggedIn()) {
     return true;
   }
-  inject(Router).navigate(['/login']);
+
+  // Kullanıcıyı login sayfasına atarken returnUrl verebiliriz (Gelişmiş özellik)
+  router.navigate(['/login']);
   return false;
 };

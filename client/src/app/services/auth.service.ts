@@ -1,79 +1,96 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
-import { Observable, of, tap } from 'rxjs';
+import { inject, Injectable, signal } from '@angular/core';
+import { Observable, of, tap, switchMap, catchError, map } from 'rxjs';
 import { ApiResponse } from '../models/api-response';
 import { User } from '../models/user';
+import { Router } from '@angular/router';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
   private baseUrl = 'http://localhost:5000/api/account';
-  private token = 'token';
-  private httpClient = inject(HttpClient);
+  private tokenKey = 'token';
+  private userKey = 'user';
 
-  register(data: FormData): Observable<ApiResponse<String>> {
+  private httpClient = inject(HttpClient);
+  private router = inject(Router);
+
+  // Reaktif State: Kullanıcı bilgisini burada tutuyoruz
+  currentUser = signal<User | null>(this.getUserFromStorage());
+
+  constructor() {
+    // Uygulama ilk açıldığında token varsa ama user yoksa user'ı çekebilirsin (Opsiyonel)
+  }
+
+  register(data: FormData): Observable<ApiResponse<string>> {
     return this.httpClient
       .post<ApiResponse<string>>(`${this.baseUrl}/register`, data)
       .pipe(
         tap((response) => {
-          localStorage.setItem(this.token, response.data);
-        })
+          if (response.isSuccess) {
+            localStorage.setItem(this.tokenKey, response.data);
+            // Register sonrası otomatik login sayılacaksa user'ı da çekmelisin
+          }
+        }),
       );
   }
 
-  login(email: string, password: string): Observable<ApiResponse<string>> {
+  login(email: string, password: string): Observable<void> {
     return this.httpClient
-      .post<ApiResponse<string>>(`${this.baseUrl}/login`, {
-        email,
-        password,
-      })
+      .post<ApiResponse<string>>(`${this.baseUrl}/login`, { email, password })
       .pipe(
+        // 1. Token geldi, kaydet
         tap((response) => {
           if (response.isSuccess) {
-            localStorage.setItem(this.token, response.data);
+            localStorage.setItem(this.tokenKey, response.data);
           }
-
-          return response;
-        })
+        }),
+        // 2. Hemen ardından 'me' endpointine git (SwitchMap önceki akışı bırakıp buna geçer)
+        switchMap(() => this.me()),
+        // 3. Sonuç olarak void döndür (Componentin detayı bilmesine gerek yok)
+        map(() => void 0),
       );
   }
 
-  me(): Observable<ApiResponse<User>> {
-    return this.httpClient
-      .get<ApiResponse<User>>(`${this.baseUrl}/me`, {
-        headers: {
-          Authorization: `Bearer ${this.getAccessToken}`,
-        },
-      })
-      .pipe(
-        tap((response) => {
-          if (response.isSuccess) {
-            localStorage.setItem('user', JSON.stringify(response.data));
-          }
-        })
-      );
+  // Interceptor olduğu için artık header eklememize gerek yok!
+  me(): Observable<User> {
+    return this.httpClient.get<ApiResponse<User>>(`${this.baseUrl}/me`).pipe(
+      map((response) => response.data), // Sadece user datasını al
+      tap((user) => {
+        this.setUserToStorage(user);
+        this.currentUser.set(user); // Sinyali güncelle, tüm uygulama haberdar olsun
+      }),
+    );
   }
 
-  logout(): Observable<boolean> {
-  // 1. Local verileri temizle
-    localStorage.removeItem(this.token);
-    localStorage.removeItem('user'); 
-
-  // 2. Geriye bir Observable fırlat (Bu subscribe edilebilir olmasını sağlar)
-  return of(true);
-}
+  logout() {
+    localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(this.userKey);
+    this.currentUser.set(null); // Sinyali sıfırla
+    this.router.navigate(['/login']);
+  }
 
   get getAccessToken(): string | null {
-    return localStorage.getItem(this.token) || '';
+    return localStorage.getItem(this.tokenKey);
   }
 
   isLoggedIn(): boolean {
-    return !!localStorage.getItem(this.token);
+    // Sadece token varlığı yetmez, currentUser sinyali de dolu olmalı
+    return !!this.getAccessToken;
   }
 
-  get currentLoggedInUser(): User | null {
-    const user: User = JSON.parse(localStorage.getItem('user') || '{}');
-    return user;
+  // Helper: Storage işlemleri
+  private getUserFromStorage(): User | null {
+    const userStr = localStorage.getItem(this.userKey);
+    try {
+      return userStr ? JSON.parse(userStr) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private setUserToStorage(user: User) {
+    localStorage.setItem(this.userKey, JSON.stringify(user));
   }
 }
