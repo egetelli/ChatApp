@@ -146,9 +146,11 @@ public class ChatHub(UserManager<AppUser> userManager, AppDbContext context) : H
         var userName = Context.User!.Identity!.Name!;
         var sender = await userManager.FindByNameAsync(userName);
 
+        if (sender is null) return;
+
         var newMsg = new Message
         {
-            SenderId = sender!.Id,
+            SenderId = sender.Id,
             Content = messageDto.Content,
             MessageType = messageDto.MessageType,
             AttachmentUrl = messageDto.AttachmentUrl,
@@ -160,22 +162,51 @@ public class ChatHub(UserManager<AppUser> userManager, AppDbContext context) : H
         if (messageDto.GroupId.HasValue)
         {
             newMsg.GroupId = messageDto.GroupId.Value;
-            context.Messages.Add(newMsg);
-            await context.SaveChangesAsync();
-
-            await Clients.Group("Group_" + messageDto.GroupId.Value)
-                .SendAsync("ReceiveNewMessage", newMsg);
         }
         else
         {
             newMsg.ReceiverId = messageDto.ReceiverId;
-            context.Messages.Add(newMsg);
-            await context.SaveChangesAsync();
+        }
 
+        context.Messages.Add(newMsg);
+        await context.SaveChangesAsync();
+
+        // 🔥 Sender navigation property yükleniyor
+        await context.Entry(newMsg)
+            .Reference(m => m.Sender)
+            .LoadAsync();
+
+        // 🔥 DTO oluşturuyoruz (Entity göndermiyoruz!)
+        var messageResponse = new MessageResponseDto
+        {
+            Id = newMsg.Id,
+            Content = newMsg.Content,
+            CreatedDate = newMsg.CreatedDate,
+            ReceiverId = newMsg.ReceiverId,
+            SenderId = newMsg.SenderId,
+            GroupId = newMsg.GroupId,
+            MessageType = newMsg.MessageType,
+            AttachmentUrl = newMsg.AttachmentUrl,
+            AttachmentName = newMsg.AttachmentName,
+            IsRead = newMsg.IsRead,
+
+            SenderProfileImage = newMsg.Sender?.ProfileImage,
+            SenderFullName = newMsg.Sender?.FullName,
+            SenderUserName = newMsg.Sender?.UserName
+        };
+
+        if (messageDto.GroupId.HasValue)
+        {
+            await Clients.Group("Group_" + messageDto.GroupId.Value)
+                .SendAsync("ReceiveNewMessage", messageResponse);
+        }
+        else
+        {
             await Clients.User(messageDto.ReceiverId!)
-                .SendAsync("ReceiveNewMessage", newMsg);
+                .SendAsync("ReceiveNewMessage", messageResponse);
 
-            await Clients.Caller.SendAsync("ReceiveNewMessage", newMsg);
+            await Clients.Caller
+                .SendAsync("ReceiveNewMessage", messageResponse);
         }
     }
 

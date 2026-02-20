@@ -37,6 +37,16 @@ export class ChatService {
   // SignalR, HttpClient kullanmadığı için Interceptor buraya işlemez.
   // -------------------------------------------------------------------------
   startConnection(token: string, groupId?: string, senderId?: string) {
+    if (this.hubConnection?.state === HubConnectionState.Connected) return;
+
+    if (this.hubConnection) {
+      this.hubConnection.off('ReceiveNewMessage');
+      this.hubConnection.off('NotifyTypingToUser');
+      this.hubConnection.off('ReceiveMessageList');
+      this.hubConnection.off('Notify');
+      this.hubConnection.off('OnlineUsers');
+    }
+
     let url = this.hubUrl;
 
     if (senderId) {
@@ -99,6 +109,8 @@ export class ChatService {
     });
 
     this.hubConnection.on('ReceiveNewMessage', (message: Message) => {
+      console.log("Yeni mesaj geldi:", message);
+      console.log("Profil foto:", message.senderProfileImage);
       const isChatOpen =
         this.currentOpenedChat() &&
         (this.currentOpenedChat()?.id === message.senderId ||
@@ -108,6 +120,8 @@ export class ChatService {
         this.currentOpenedGroup() &&
         this.currentOpenedGroup()?.groupId === message.groupId;
 
+      let audio = new Audio('assets/notification.mp3');
+      audio.play();
       if (isChatOpen || isGroupOpen) {
         this.chatMessages.update((msgs) => [...msgs, message]);
       } else {
