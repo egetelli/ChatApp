@@ -12,7 +12,7 @@ export class AuthService {
   private baseUrl = 'http://localhost:5000/api/account';
   private tokenKey = 'token';
   private userKey = 'user';
-
+  isLoading = signal<boolean>(false);
   private httpClient = inject(HttpClient);
   private router = inject(Router);
 

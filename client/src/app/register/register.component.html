@@ -63,11 +63,12 @@
                 <span>Upload Image</span>
             </button>
 
-            <button type="submit" [disabled]="!userForm.valid" class="w-full mb-5 bg-blue-900 text-white rounded-md p-2 
-           cursor-pointer hover:bg-blue-800 
-           disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-900">
-                Register
-            </button>
+            <app-button 
+                [isDisabled]="!userForm.valid"
+                [text]="'Register'"
+                (action)="register()"
+                [isLoading]="authService.isLoading()"
+            />
 
             <p class="font-bold text-xs text-center pb-10">
                 Already have an account? <a class="text-blue-500!" [routerLink]="'/login'">Login</a>

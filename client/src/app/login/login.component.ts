@@ -8,6 +8,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ApiResponse } from '../models/api-response';
 import { Router, RouterLink } from '@angular/router';
+import { ButtonComponent } from "../components/button/button.component";
 
 @Component({
   selector: 'app-login',
@@ -19,6 +20,7 @@ import { Router, RouterLink } from '@angular/router';
     FormsModule,
     MatInputModule,
     RouterLink,
+    ButtonComponent
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
@@ -27,24 +29,27 @@ export class LoginComponent {
   email!: string;
   password!: string;
 
-  private authService = inject(AuthService);
+  authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
   private router = inject(Router);
 
   hide = signal(false);
 
   login() {
+    this.authService.isLoading.set(true);
     this.authService.login(this.email, this.password).subscribe({
       next: () => {
         // me() serviste zincirleme çağrıldı, user set edildi.
         // Sadece yönlendirme yapıyoruz.
         this.router.navigate(['/chat']);
         this.snackBar.open('Giriş başarılı', 'Kapat', { duration: 2000 });
+        this.authService.isLoading.set(false);
       },
       error: (error: HttpErrorResponse) => {
         // Backend'den gelen hata formatına göre burayı düzenle
         const message = error.error?.message || 'Giriş başarısız';
         this.snackBar.open(message, 'Kapat', { duration: 3000 });
+        this.authService.isLoading.set(false);
       },
     });
   }
