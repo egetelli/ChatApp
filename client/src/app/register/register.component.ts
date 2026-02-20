@@ -63,11 +63,11 @@ export class RegisterComponent {
     formData.append('profileImage', this.profileImage!);
     this.authService.register(formData).subscribe({
       next: () => {
-        this.snackBar.open('User registered successfully', 'Close');
+        this.snackBar.open('User registered successfully', 'Close', { duration: 2000 });
       },
       error: (error: HttpErrorResponse) => {
         let err = error.error as ApiResponse<string>;
-        this.snackBar.open(err.error, 'Close');
+        this.snackBar.open(err.error, 'Close', { duration: 2000 });
       },
       complete: () => {
         this.router.navigate(['/']);
