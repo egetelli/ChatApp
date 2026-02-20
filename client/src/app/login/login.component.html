@@ -33,11 +33,9 @@
                 </mat-icon>
             </mat-form-field>
 
-            <button type="submit" [disabled]="!userForm.valid" class="w-full mb-5 bg-blue-900 text-white rounded-md p-2 
-           cursor-pointer hover:bg-blue-800 
-           disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-900">
-                Login
-            </button>
+            <app-button 
+            (action)="login()" [text]="'Login'"
+            [isDisabled]="!userForm.valid" [isLoading]="authService.isLoading()"></app-button>
 
             <p class="font-bold text-xs text-center pb-10">
                 Don't have an account? <a class="text-blue-500!" [routerLink]="'/register'">Register</a>
