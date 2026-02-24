@@ -109,6 +109,7 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 app.MapHub<ChatHub>("hubs/chat");
+app.MapHub<VideoChatHub>("hubs/video");
 app.MapAccountEndpoint();
 app.MapChatEndpoint();
 app.MapGroupEndpoint();
