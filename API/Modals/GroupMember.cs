@@ -5,6 +5,7 @@ namespace API.Models; // Namespace "Models" olsun, Modals (pencere) değil :)
 
 public class GroupMember
 {
+    public int Id { get; set; }
     // İlişkiler
     public int GroupId { get; set; }
     public Group Group { get; set; } = null!;

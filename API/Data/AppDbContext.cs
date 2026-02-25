@@ -22,19 +22,26 @@ public class AppDbContext : IdentityDbContext<AppUser>
     {
         base.OnModelCreating(builder);
 
-        // GroupMember için Composite Key (Aynı kullanıcı aynı gruba 2 kere giremez)
         builder.Entity<GroupMember>()
-            .HasKey(gm => new { gm.GroupId, gm.UserId });
+            .HasIndex(gm => new { gm.GroupId, gm.UserId })
+            .IsUnique(); // Aynı user aynı gruba 2 kere giremez
 
-        // İlişkileri tanımla (Opsiyonel ama garanti olsun)
         builder.Entity<GroupMember>()
             .HasOne(gm => gm.Group)
             .WithMany(g => g.GroupMembers)
-            .HasForeignKey(gm => gm.GroupId);
+            .HasForeignKey(gm => gm.GroupId)
+            .OnDelete(DeleteBehavior.Cascade); // Group silinirse üyeler silinsin
 
         builder.Entity<GroupMember>()
             .HasOne(gm => gm.User)
-            .WithMany() // User tarafında liste tutmuyorsan boş bırak
-            .HasForeignKey(gm => gm.UserId);
+            .WithMany()
+            .HasForeignKey(gm => gm.UserId)
+            .OnDelete(DeleteBehavior.NoAction); // User silinirse zincir olmasın
+
+        builder.Entity<Group>()
+            .HasOne<AppUser>()
+            .WithMany()
+            .HasForeignKey(g => g.CreatorId)
+            .OnDelete(DeleteBehavior.NoAction); // Grup silindiğinde kullanıcı silinmesin
     }
 }

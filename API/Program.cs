@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Scalar.AspNetCore;
 
 //Uygulamanın temelini (konfigürasyon, loglama vb.) hazırlar. Bir nevi inşaata başlamadan önceki iskele kurulumudur.
 var builder = WebApplication.CreateBuilder(args);
@@ -29,7 +30,7 @@ var JwtSetting = builder.Configuration.GetSection("JWTSettings");
 
 //AddDbContext: Uygulamanın veritabanı ile konuşmasını sağlar.
 //UseSqlite: Hafif bir veritabanı olan SQLite kullanılacağını belirtir. Veritabanı dosyasının adı chat.db olacaktır.
-builder.Services.AddDbContext<AppDbContext>(x => x.UseSqlite("Data Source=chat.db"));
+builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 //AddIdentityCore: .NET'in hazır kullanıcı yönetim sistemini (Login, Register işlemleri için) projeye ekler. AppUser senin özel kullanıcı sınıfındır.
 //AddEntityFrameworkStores: Kullanıcı verilerini (şifre, email vb.) yukarıda tanımladığın AppDbContext üzerinden veritabanında saklamasını söyler.
@@ -75,6 +76,7 @@ builder.Services.AddAuthentication(opt =>
     };
 });
 builder.Services.AddAuthorization();
+builder.Services.AddApplicationInsightsTelemetry();
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -88,13 +90,23 @@ builder.Services.AddSignalR()
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
+// if (app.Environment.IsDevelopment())
+// {
     app.MapOpenApi(); // Sadece geliştirme modundaysan API dökümantasyonunu aktif et.
-}
+// }
+app.MapScalarApiReference();
 
 app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod()
                 .AllowCredentials().WithOrigins("http://localhost:4200", "https://localhost:4200"));
+
+
+//Migrate pending migrations
+using(var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    dbContext.Database.Migrate(); // Veritabanında tanımlı ama henüz uygulanmamış değişiklikler varsa onları uygular.
+}
+
 
 app.UseHttpsRedirection(); // HTTP isteklerini zorla HTTPS'e çevirir (Güvenlik).
 app.UseAuthentication(); // 1. ÖNCE KİMLİK KONTROLÜ: "Sen kimsin? Token'ın geçerli mi?"
@@ -113,5 +125,6 @@ app.MapHub<VideoChatHub>("hubs/video");
 app.MapAccountEndpoint();
 app.MapChatEndpoint();
 app.MapGroupEndpoint();
+app.MapGet("", () => "Hello World! Update"); 
 
 app.Run(); // Uygulamayı başlat ve istekleri dinlemeye başla.
