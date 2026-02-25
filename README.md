@@ -35,6 +35,16 @@ Veritabanı işlemleri **Entity Framework Core** ile Code-First yaklaşımı kul
 * **Sonsuz Kaydırma (Infinite Scroll):** Geçmiş mesajları "Daha Fazla Yükle" özelliği ile performanslı listeleme.
 * **Modern Bileşenler:** Angular Material ve özel Tailwind bileşenleri.
 
+### 🎥 Görüntülü ve Sesli Konuşma
+
+* **WebRTC Entegrasyonu:** Kullanıcılar arasında düşük gecikmeli, yüksek performanslı peer-to-peer görüntülü ve sesli görüşme.
+
+* **SignalR Sinyalleşme:** Offer, Answer ve ICE Candidate verilerinin anlık iletimi.
+
+* **Arama Yönetimi:** Arama başlatma, gelen çağrı bildirimi ve çağrı sonlandırma desteği.
+
+* **Gerçek Zamanlı Bağlantı:** WebSocket tabanlı yapı sayesinde kesintisiz iletişim.
+
 ---
 
 ## 🏗 Teknoloji Yığını (Tech Stack)
@@ -45,7 +55,7 @@ Proje, endüstri standardı en güncel teknolojiler kullanılarak geliştirilmi�
 
 * **Framework:** .NET 8
 * **API Mimarisi:** **Minimal APIs** (Hafif ve hızlı endpoint tanımlamaları)
-* **Gerçek Zamanlı İletişim:** **SignalR** (WebSockets)
+* **Gerçek Zamanlı İletişim:** **SignalR** (WebSockets), **WebRTC**
 * **ORM:** **Entity Framework Core**
 * **Veritabanı:** SQLite
 * **Kimlik Doğrulama:** JWT (JSON Web Token) Bearer Authentication
