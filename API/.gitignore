@@ -1,0 +1,5 @@
+bin/
+obj/
+.vscode
+chat.db
+API.http
