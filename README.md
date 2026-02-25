@@ -2,7 +2,7 @@
 
 # 💬 Modern Real-Time Chat Application
 
-Bu proje, modern web teknolojileri kullanılarak geliştirilmiş, yüksek performanslı ve ölçeklenebilir bir **gerçek zamanlı mesajlaşma uygulamasıdır**. Kullanıcıların bireysel sohbetler etmesine, gruplar kurmasına, medya paylaşmasına ve anlık bildirimler almasına olanak tanır.
+Bu proje, modern web teknolojileri kullanılarak geliştirilmiş, yüksek performanslı ve ölçeklenebilir bir **gerçek zamanlı mesajlaşma uygulamasıdır**. Kullanıcıların bireysel sohbetler etmesine, gruplar kurmasına, medya paylaşmasına, görüntülü konuşmasına ve anlık bildirimler almasına olanak tanır.
 
 ## 🚀 Proje Hakkında
 
