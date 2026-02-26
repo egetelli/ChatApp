@@ -46,7 +46,7 @@
                 <!-- =========================== -->
                 @if(item.messageType === 'Image'){
                 <div class="mb-2 relative">
-                    <img [src]="'http://localhost:5000' + item.attachmentUrl"
+                    <img [src]="env.baseUrl + item.attachmentUrl"
                         class="rounded-lg max-h-60 object-cover w-full border border-black/10" alt="Görsel">
 
                     <!-- Resim İndirme Butonu -->

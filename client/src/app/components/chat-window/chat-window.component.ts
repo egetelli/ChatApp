@@ -9,6 +9,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { VideoChatService } from '../../services/video-chat.service';
 import { MatDialog } from '@angular/material/dialog';
 import { VideoChatComponent } from '../../video-chat/video-chat.component';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-chat-window',
@@ -27,6 +28,8 @@ export class ChatWindowComponent {
   signalRService = inject(VideoChatService);
   snackBar = inject(MatSnackBar);
   message: string = '';
+
+  env = environment;
 
   dialog = inject(MatDialog);
 

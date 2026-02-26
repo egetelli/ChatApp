@@ -4,12 +4,13 @@ import { Observable, of, tap, switchMap, catchError, map } from 'rxjs';
 import { ApiResponse } from '../models/api-response';
 import { User } from '../models/user';
 import { Router } from '@angular/router';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  private baseUrl = 'http://localhost:5000/api/account';
+  private baseUrl = `${environment.baseUrl}/api/account`;
   private tokenKey = 'token';
   private userKey = 'user';
   isLoading = signal<boolean>(false);

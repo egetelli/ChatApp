@@ -14,6 +14,7 @@ import { TypingIndicatorComponent } from '../typing-indicator/typing-indicator.c
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule } from '@angular/forms';
 import { Group } from '../../models/group';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-chat-sidebar',
@@ -37,6 +38,7 @@ export class ChatSidebarComponent implements OnInit {
   snackBar = inject(MatSnackBar);
   router = inject(Router);
 
+  env = environment;
   // --- MODAL KONTROLÜ ---
   // HTML'deki @if(isGroupModalOpen) bloğunu kontrol eder
   isGroupModalOpen = false;

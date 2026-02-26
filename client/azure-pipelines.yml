@@ -1,0 +1,34 @@
+trigger:
+- master
+
+pool:
+  name: Default
+
+steps:
+- task: NodeTool@0
+  inputs:
+    versionSpec: '20.x'
+  displayName: 'Install Node.js'
+
+# 1. ADIM: Sadece paketleri kur
+- script: npm install --legacy-peer-deps
+  displayName: 'npm install'
+
+# 2. ADIM: Sadece derleme yap (Hata verirse burada duracaktır)
+- script: npx ng build --configuration=production --output-path=dist
+  displayName: 'Angular Build'
+
+# 3. ADIM: Dosyaları paketleme alanına taşı
+- task: CopyFiles@2
+  inputs:
+    # Angular 17+ genellikle dist/browser klasörüne çıktı verir
+    # Eğer hata alırsan SourceFolder kısmını 'dist/browser' olarak dene
+    SourceFolder: 'dist' 
+    Contents: '**'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+# 4. ADIM: Paketi yayınla
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'client'

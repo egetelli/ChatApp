@@ -52,9 +52,9 @@
 
             <div class="relative">
                 <!-- Grup Resmi veya Varsayılan İkon -->
-                <img [src]="group.groupImage ? 'http://localhost:5000' + group.groupImage : 'assets/default-group.png'"
+                <img [src]="group.groupImage ? env.baseUrl + group.groupImage : 'assets/default-group.png'"
                     class="h-10 w-10 rounded-xl object-cover border border-gray-100 group-hover:border-blue-200 bg-gray-100"
-                    onerror="this.src='assets/default-group.png'" alt="">
+                    onerror=null alt="">
             </div>
 
             <div class="ml-3 flex-1 overflow-hidden">

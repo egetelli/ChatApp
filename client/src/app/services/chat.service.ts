@@ -9,6 +9,7 @@ import {
 import { Message } from '../models/message';
 import { HttpClient } from '@angular/common/http'; // HttpHeaders'a artık gerek yok
 import { Group } from '../models/group';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
@@ -17,9 +18,9 @@ export class ChatService {
   private authService = inject(AuthService);
   private http = inject(HttpClient);
 
-  private apiUrl = 'http://localhost:5000/api/chat';
-  private groupUrl = 'http://localhost:5000/api/group';
-  private hubUrl = 'http://localhost:5000/hubs/chat';
+  private apiUrl = `${environment.baseUrl}/api/chat`;
+  private groupUrl = `${environment.baseUrl}/api/group`;
+  private hubUrl = `${environment.baseUrl}/hubs/chat`;
 
   onlineUsers = signal<User[]>([]);
   myGroups = signal<Group[]>([]);
