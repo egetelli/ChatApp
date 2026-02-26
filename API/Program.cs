@@ -30,7 +30,12 @@ var JwtSetting = builder.Configuration.GetSection("JWTSettings");
 
 //AddDbContext: Uygulamanın veritabanı ile konuşmasını sağlar.
 //UseSqlite: Hafif bir veritabanı olan SQLite kullanılacağını belirtir. Veritabanı dosyasının adı chat.db olacaktır.
-builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlOptions => sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 10, // 10 kere denesin
+            maxRetryDelay: TimeSpan.FromSeconds(30), // Her deneme arası 30 saniye beklesin
+            errorNumbersToAdd: null)));
 
 //AddIdentityCore: .NET'in hazır kullanıcı yönetim sistemini (Login, Register işlemleri için) projeye ekler. AppUser senin özel kullanıcı sınıfındır.
 //AddEntityFrameworkStores: Kullanıcı verilerini (şifre, email vb.) yukarıda tanımladığın AppDbContext üzerinden veritabanında saklamasını söyler.
@@ -61,18 +66,18 @@ builder.Services.AddAuthentication(opt =>
 
     option.Events = new JwtBearerEvents
     {
-      OnMessageReceived = context =>
-      {
-          var accessToken = context.Request.Query["access_token"];
-          var path = context.HttpContext.Request.Path;
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
 
-          if(!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
-          {
-              context.Token = accessToken;
-          }
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
 
-          return Task.CompletedTask;
-      }  
+            return Task.CompletedTask;
+        }
     };
 });
 builder.Services.AddAuthorization();
@@ -92,7 +97,7 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 // if (app.Environment.IsDevelopment())
 // {
-    app.MapOpenApi(); // Sadece geliştirme modundaysan API dökümantasyonunu aktif et.
+app.MapOpenApi(); // Sadece geliştirme modundaysan API dökümantasyonunu aktif et.
 // }
 app.MapScalarApiReference();
 
@@ -101,7 +106,7 @@ app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod()
 
 
 //Migrate pending migrations
-using(var scope = app.Services.CreateScope())
+using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     dbContext.Database.Migrate(); // Veritabanında tanımlı ama henüz uygulanmamış değişiklikler varsa onları uygular.
@@ -125,6 +130,6 @@ app.MapHub<VideoChatHub>("hubs/video");
 app.MapAccountEndpoint();
 app.MapChatEndpoint();
 app.MapGroupEndpoint();
-app.MapGet("", () => "Hello World! Update"); 
+app.MapGet("", () => "Hello World! Update");
 
 app.Run(); // Uygulamayı başlat ve istekleri dinlemeye başla.

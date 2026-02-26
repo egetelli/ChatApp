@@ -9,6 +9,7 @@ import { User } from '../../models/user';
 import { GroupMember } from '../../models/group-member';
 import { AuthService } from '../../services/auth.service';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-chat-right-sidebar',
@@ -24,6 +25,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
   templateUrl: './chat-right-sidebar.component.html',
 })
 export class ChatRightSidebarComponent {
+  env = environment;
   chatService = inject(ChatService);
   snackBar = inject(MatSnackBar);
   authService = inject(AuthService);

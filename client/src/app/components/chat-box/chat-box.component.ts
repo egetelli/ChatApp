@@ -12,6 +12,7 @@ import { DatePipe } from '@angular/common';
 import { MatIcon } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http'; // 1. HttpClient Import Edildi
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-chat-box',
@@ -74,6 +75,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http'; // 1. Http
   ],
 })
 export class ChatBoxComponent implements AfterViewChecked {
+  env = environment;
   @ViewChild('scrollMe') private myScrollContainer!: ElementRef;
   chatService = inject(ChatService);
   authService = inject(AuthService);
@@ -108,7 +110,7 @@ export class ChatBoxComponent implements AfterViewChecked {
       return;
     }
 
-    const url = `http://localhost:5000/api/chat/download/${fileName}`;
+    const url = `${environment.baseUrl}/api/chat/download/${fileName}`;
 
     // 1. Önce HEAD isteği ile kontrol et (Angular HttpClient ile)
     this.http

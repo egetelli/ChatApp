@@ -9,7 +9,7 @@
             <div class="relative">
                 <img [src]="user.profileImage || 'assets/default-avatar.png'"
                     class="w-11 h-11 rounded-full object-cover border-2 border-white shadow-sm ring-1 ring-gray-100"
-                    onerror="this.src='assets/default-avatar.png'">
+                    onerror="this.onerror=null;">
 
                 <div class="absolute bottom-0.5 right-0.5 w-3 h-3 border-2 border-white rounded-full"
                     [ngClass]="chatService.status(user.userName) === 'online' ? 'bg-green-500' : 'bg-gray-300'">
@@ -32,9 +32,9 @@
 
             @if(chatService.currentOpenedGroup(); as group){
             <div class="relative">
-                <img [src]="group.groupImage ? 'http://localhost:5000' + group.groupImage : 'assets/default-group.png'"
+                <img [src]="group.groupImage ? env.baseUrl + group.groupImage : 'assets/default-group.png'"
                     class="w-11 h-11 rounded-xl object-cover border-2 border-white shadow-sm ring-1 ring-gray-100"
-                    onerror="this.src='assets/default-group.png'">
+                    onerror="this.onerror=null;">
 
                 <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm border border-gray-50">
                     <mat-icon class="text-blue-600" style="font-size: 14px; width: 14px; height: 14px;">group</mat-icon>
