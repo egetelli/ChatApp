@@ -1,159 +1,163 @@
----
-
 # 💬 Modern Real-Time Chat Application
 
-Bu proje, modern web teknolojileri kullanılarak geliştirilmiş, yüksek performanslı ve ölçeklenebilir bir **gerçek zamanlı mesajlaşma uygulamasıdır**. Kullanıcıların bireysel sohbetler etmesine, gruplar kurmasına, medya paylaşmasına, görüntülü konuşmasına ve anlık bildirimler almasına olanak tanır.
-
-## 🚀 Proje Hakkında
-
-Bu uygulama, Backend tarafında **.NET Minimal APIs** ve **SignalR** mimarisinin hafifliği ve hızı üzerine kurulmuştur. Frontend tarafında ise **Angular**'ın güçlü bileşen yapısı ve **TailwindCSS**'in esnek tasarım yetenekleri kullanılarak modern bir arayüz sunulmuştur.
-
-Veritabanı işlemleri **Entity Framework Core** ile Code-First yaklaşımı kullanılarak yönetilmektedir.
-
-## ✨ Temel Özellikler
-
-### 🔌 Gerçek Zamanlı İletişim
-
-* **SignalR Entegrasyonu:** Mesajlar, bildirimler ve durum güncellemeleri (online/offline) anlık olarak iletilir.
-* **Canlı Durum Takibi:** Kullanıcıların çevrimiçi/çevrimdışı durumları ve "yazıyor..." göstergeleri.
-
-### 👥 Grup ve Bireysel Sohbet
-
-* **Özel Mesajlaşma:** Kullanıcılar arası güvenli birebir sohbet.
-* **Grup Yönetimi:** Grup oluşturma, üye ekleme/çıkarma.
-* **Rol Yönetimi:** Grup yöneticisi atama (Admin yetkisi verme).
-
-### 📁 Medya ve Dosya Paylaşımı
-
-* **Görsel ve Dosya Gönderimi:** Sohbet içerisinde resim ve belge paylaşımı.
-* **Görsel Önizleme:** Gönderilen resimlerin sohbet balonunda şık sunumu.
-* **Profil Yönetimi:** Kullanıcı profil fotoğrafı yükleme ve otomatik avatar (UI Avatars) desteği.
-
-### 🛠 Arayüz ve Deneyim
-
-* **Responsive Tasarım:** TailwindCSS sayesinde tüm cihazlarda kusursuz görünüm.
-* **Sonsuz Kaydırma (Infinite Scroll):** Geçmiş mesajları "Daha Fazla Yükle" özelliği ile performanslı listeleme.
-* **Modern Bileşenler:** Angular Material ve özel Tailwind bileşenleri.
-
-### 🎥 Görüntülü ve Sesli Konuşma
-
-* **WebRTC Entegrasyonu:** Kullanıcılar arasında düşük gecikmeli, yüksek performanslı peer-to-peer görüntülü ve sesli görüşme.
-
-* **SignalR Sinyalleşme:** Offer, Answer ve ICE Candidate verilerinin anlık iletimi.
-
-* **Arama Yönetimi:** Arama başlatma, gelen çağrı bildirimi ve çağrı sonlandırma desteği.
-
-* **Gerçek Zamanlı Bağlantı:** WebSocket tabanlı yapı sayesinde kesintisiz iletişim.
+This project is a high-performance, scalable **real-time messaging application** built using modern web technologies. It enables users to have private conversations, create groups, share media, make video/audio calls, and receive instant notifications.
 
 ---
 
-## 🏗 Teknoloji Yığını (Tech Stack)
+## 🚀 About the Project
 
-Proje, endüstri standardı en güncel teknolojiler kullanılarak geliştirilmiştir.
+This application is built on the lightweight and high-performance architecture of **.NET Minimal APIs** and **SignalR** on the backend.
+
+On the frontend, it delivers a modern and responsive user interface powered by **Angular**’s robust component structure and **TailwindCSS**’s flexible styling capabilities.
+
+Database operations are managed using **Entity Framework Core** with a Code-First approach.
+
+---
+
+## ✨ Core Features
+
+### 🔌 Real-Time Communication
+
+* **SignalR Integration:** Messages, notifications, and status updates (online/offline) are delivered instantly.
+* **Live Status Tracking:** Real-time user presence indicators and “typing...” notifications.
+
+### 👥 Private & Group Chat
+
+* **Private Messaging:** Secure one-to-one conversations between users.
+* **Group Management:** Create groups, add/remove members.
+* **Role Management:** Assign group administrators (admin privileges).
+
+### 📁 Media & File Sharing
+
+* **Image & File Uploads:** Share images and documents within chats.
+* **Image Preview:** Elegant in-chat image rendering.
+* **Profile Management:** Upload profile pictures with automatic avatar support (UI Avatars).
+
+### 🛠 UI & User Experience
+
+* **Responsive Design:** Seamless experience across all devices using TailwindCSS.
+* **Infinite Scroll:** Efficient message history loading with a “Load More” feature.
+* **Modern Components:** Angular Material dialogs, snackbars, icons, and custom Tailwind components.
+
+### 🎥 Video & Voice Calling
+
+* **WebRTC Integration:** Low-latency, high-performance peer-to-peer video and voice communication.
+* **SignalR Signaling:** Real-time transmission of Offer, Answer, and ICE Candidate data.
+* **Call Management:** Initiate calls, receive incoming call notifications, and end calls.
+* **WebSocket-Based Communication:** Ensures uninterrupted real-time connectivity.
+
+---
+
+## 🏗 Technology Stack
+
+The project is built using industry-standard, modern technologies.
 
 ### 🔙 Backend (.NET Core)
 
 * **Framework:** .NET 8
-* **API Mimarisi:** **Minimal APIs** (Hafif ve hızlı endpoint tanımlamaları)
-* **Gerçek Zamanlı İletişim:** **SignalR** (WebSockets), **WebRTC**
-* **ORM:** **Entity Framework Core**
-* **Veritabanı:** SQLite
-* **Kimlik Doğrulama:** JWT (JSON Web Token) Bearer Authentication
-* **Dosya Yönetimi:** Statik dosya sunucusu (Static Files)
+* **API Architecture:** Minimal APIs (lightweight and fast endpoint definitions)
+* **Real-Time Communication:** SignalR (WebSockets), WebRTC
+* **ORM:** Entity Framework Core
+* **Database:** SQLite
+* **Authentication:** JWT (JSON Web Token) Bearer Authentication
+* **File Management:** Static File Hosting
 
-### front Frontend (Angular)
+### 🎨 Frontend (Angular)
 
 * **Framework:** Angular 17+ (Standalone Components, Signals, Control Flow `@if`, `@for`)
-* **Stil Kütüphanesi:** **TailwindCSS**
-* **HTTP İstekleri:** Angular `HttpClient` & Interceptors
-* **UI Bileşenleri:** Angular Material (Dialog, Snackbar, Icon)
-* **Reaktif Programlama:** RxJS
+* **Styling Library:** TailwindCSS
+* **HTTP Requests:** Angular `HttpClient` & Interceptors
+* **UI Components:** Angular Material (Dialog, Snackbar, Icon)
+* **Reactive Programming:** RxJS
 
 ---
 
-## 📂 Proje Kurulumu
+## 📂 Project Setup
 
-Projeyi yerel makinenizde çalıştırmak için aşağıdaki adımları izleyin.
+Follow the steps below to run the project locally.
 
-### Ön Gereksinimler
+---
+
+### 🔧 Prerequisites
 
 * [.NET 8 SDK](https://dotnet.microsoft.com/download)
-* [Node.js](https://nodejs.org/) (LTS sürümü önerilir)
-* [SQLite](https://sqlite.org/download.html) (veya LocalDB)
+* [Node.js](https://nodejs.org/) (LTS version recommended)
+* [SQLite](https://sqlite.org/download.html) (or LocalDB)
 
-### 1. Backend Kurulumu
+---
+
+### 1️⃣ Backend Setup
 
 ```bash
-# Backend klasörüne gidin
+# Navigate to the Backend folder
 cd API
 
-# Bağımlılıkları yükleyin
+# Restore dependencies
 dotnet restore
 
-# appsettings.json dosyasındaki ConnectionString'i kendi veritabanınıza göre düzenleyin.
+# Update the ConnectionString in appsettings.json according to your database.
 
-# Veritabanını oluşturun (Migration)
+# Create the database (Migration)
 dotnet ef database update
 
-# Uygulamayı başlatın
+# Run the application
 dotnet run
-# API http://localhost:5000 adresinde çalışacaktır.
-
+# The API will run at http://localhost:5000
 ```
 
-### 2. Frontend Kurulumu
+---
+
+### 2️⃣ Frontend Setup
 
 ```bash
-# Frontend klasörüne gidin
+# Navigate to the Frontend folder
 cd Client
 
-# Bağımlılıkları yükleyin
+# Install dependencies
 npm install
 
-# Uygulamayı başlatın
+# Start the application
 ng serve
-# Uygulama http://localhost:4200 adresinde çalışacaktır.
-
+# The app will run at http://localhost:4200
 ```
 
 ---
 
-## 📷 Ekran Görüntüleri
+## 📷 Screenshots
 
-| Sohbet Ekranı | Grup Yönetimi |
-| --- | --- |
-|  |  |
-| *(eklenecek)* |  |
+| Chat Screen     | Group Management |
+| --------------- | ---------------- |
+| *(Coming Soon)* | *(Coming Soon)*  |
 
 ---
 
-## 🔧 Yapılandırma
+## 🔧 Configuration
 
-### Veritabanı Bağlantısı
+### Database Connection
 
-`API/program.cs` dosyasında `SQLite` alanını ekleyin:
+Add the `SQLite` configuration in `API/program.cs`:
 
+```csharp
+builder.Services.AddDbContext<AppDbContext>(x => 
+    x.UseSqlite("Data Source=chat.db"));
 ```
-builder.Services.AddDbContext<AppDbContext>(x => x.UseSqlite("Data Source=chat.db"));
 
-```
+### JWT Settings
 
-### JWT Ayarları
-
-Token üretimi için `appsettings.json` içinde `TokenKey` alanının güvenli bir değer olduğundan emin olun.
+Ensure that the `TokenKey` value in `appsettings.json` is set to a secure and strong secret key for token generation.
 
 ---
 
-## 🤝 Katkıda Bulunma
+## 🤝 Contributing
 
-1. Bu projeyi Forklayın.
-2. Yeni bir özellik dalı oluşturun (`git checkout -b feature/YeniOzellik`).
-3. Değişikliklerinizi commit edin (`git commit -m 'Yeni özellik eklendi'`).
-4. Dalınızı Push edin (`git push origin feature/YeniOzellik`).
-5. Bir Pull Request oluşturun.
+1. Fork the repository.
+2. Create a new feature branch (`git checkout -b feature/NewFeature`).
+3. Commit your changes (`git commit -m 'Add new feature'`).
+4. Push your branch (`git push origin feature/NewFeature`).
+5. Open a Pull Request.
 
 ---
 
-## 📄 Lisans
+## 📄 License
 
-Bu proje [MIT](https://www.google.com/search?q=LICENSE) lisansı ile lisanslanmıştır.
+This project is licensed under the MIT License.
